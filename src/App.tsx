@@ -10,6 +10,9 @@ import AppLayout from '@/components/layout/AppLayout';
 // Pages
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
+import Reports from '@/pages/Reports';
+import Leads from '@/pages/Leads';
+import Clients from '@/pages/Clients';
 import NotFound from '@/pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -38,16 +41,23 @@ function App() {
                 }
               />
               
-              {/* Placeholder routes - will be implemented in next phases */}
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Reports />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              
               <Route
                 path="/leads"
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-display font-semibold mb-2">Leads Management</h2>
-                        <p className="text-muted-foreground">Coming in Phase 3</p>
-                      </div>
+                      <Leads />
                     </AppLayout>
                   </ProtectedRoute>
                 }
@@ -58,10 +68,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-display font-semibold mb-2">Clients Database</h2>
-                        <p className="text-muted-foreground">Coming in Phase 3</p>
-                      </div>
+                      <Clients />
                     </AppLayout>
                   </ProtectedRoute>
                 }
