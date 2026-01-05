@@ -28,10 +28,10 @@ export interface PrintLayout {
   name: string;
   paperWidthInch: number;
   paperHeightInch: number;
-  columns: number;
-  rows: number;
   marginMM: number;
   gapMM: number;
+  // Auto-calculated based on photo size
+  autoFit: boolean;
 }
 
 // Standard passport photo sizes (all at 300 DPI for print quality)
@@ -186,99 +186,16 @@ export const PHOTO_SIZES: PhotoSize[] = [
   },
 ];
 
-// Print layouts for different paper sizes
+// Print layout for 4x6 inch paper only - auto-fit with rotation
 export const PRINT_LAYOUTS: PrintLayout[] = [
-  // 4x6 inch layouts
   {
-    id: '4x6_india_passport',
-    name: '4x6 - Indian Passport (8 photos)',
+    id: '4x6_auto',
+    name: '4×6 inch (Auto-fit)',
     paperWidthInch: 4,
     paperHeightInch: 6,
-    columns: 2,
-    rows: 4,
     marginMM: 3,
     gapMM: 2,
-  },
-  {
-    id: '4x6_us_passport',
-    name: '4x6 - US Passport (4 photos)',
-    paperWidthInch: 4,
-    paperHeightInch: 6,
-    columns: 2,
-    rows: 2,
-    marginMM: 5,
-    gapMM: 3,
-  },
-  {
-    id: '4x6_stamp',
-    name: '4x6 - Stamp Size (20 photos)',
-    paperWidthInch: 4,
-    paperHeightInch: 6,
-    columns: 4,
-    rows: 5,
-    marginMM: 3,
-    gapMM: 2,
-  },
-  {
-    id: '4x6_mixed',
-    name: '4x6 - Custom Layout',
-    paperWidthInch: 4,
-    paperHeightInch: 6,
-    columns: 2,
-    rows: 3,
-    marginMM: 5,
-    gapMM: 3,
-  },
-  // 5x7 inch (Maxi Size) layouts
-  {
-    id: '5x7_india_passport',
-    name: '5x7 Maxi - Indian Passport (12 photos)',
-    paperWidthInch: 5,
-    paperHeightInch: 7,
-    columns: 3,
-    rows: 4,
-    marginMM: 4,
-    gapMM: 2,
-  },
-  {
-    id: '5x7_us_passport',
-    name: '5x7 Maxi - US Passport (6 photos)',
-    paperWidthInch: 5,
-    paperHeightInch: 7,
-    columns: 2,
-    rows: 3,
-    marginMM: 5,
-    gapMM: 3,
-  },
-  {
-    id: '5x7_stamp',
-    name: '5x7 Maxi - Stamp Size (35 photos)',
-    paperWidthInch: 5,
-    paperHeightInch: 7,
-    columns: 5,
-    rows: 7,
-    marginMM: 3,
-    gapMM: 2,
-  },
-  {
-    id: '5x7_pan_aadhaar',
-    name: '5x7 Maxi - PAN/Aadhaar (15 photos)',
-    paperWidthInch: 5,
-    paperHeightInch: 7,
-    columns: 3,
-    rows: 5,
-    marginMM: 4,
-    gapMM: 2,
-  },
-  {
-    id: '5x7_mixed',
-    name: '5x7 Maxi - Custom Layout',
-    paperWidthInch: 5,
-    paperHeightInch: 7,
-    columns: 3,
-    rows: 4,
-    marginMM: 5,
-    gapMM: 3,
+    autoFit: true,
   },
 ];
 
@@ -291,3 +208,33 @@ export const defaultAdjustments: PhotoAdjustments = {
   offsetX: 0,
   offsetY: 0,
 };
+
+// Calculate optimal grid layout for a photo size on paper
+export function calculateOptimalLayout(
+  photoSize: PhotoSize,
+  layout: PrintLayout
+): { columns: number; rows: number; rotated: boolean; photoCount: number } {
+  const DPI = 300;
+  const paperWidthMM = layout.paperWidthInch * 25.4;
+  const paperHeightMM = layout.paperHeightInch * 25.4;
+  
+  const availableWidth = paperWidthMM - (layout.marginMM * 2);
+  const availableHeight = paperHeightMM - (layout.marginMM * 2);
+  
+  // Try normal orientation
+  const normalCols = Math.floor((availableWidth + layout.gapMM) / (photoSize.widthMM + layout.gapMM));
+  const normalRows = Math.floor((availableHeight + layout.gapMM) / (photoSize.heightMM + layout.gapMM));
+  const normalCount = normalCols * normalRows;
+  
+  // Try rotated orientation (swap photo width/height)
+  const rotatedCols = Math.floor((availableWidth + layout.gapMM) / (photoSize.heightMM + layout.gapMM));
+  const rotatedRows = Math.floor((availableHeight + layout.gapMM) / (photoSize.widthMM + layout.gapMM));
+  const rotatedCount = rotatedCols * rotatedRows;
+  
+  // Use whichever orientation fits more photos
+  if (rotatedCount > normalCount) {
+    return { columns: rotatedCols, rows: rotatedRows, rotated: true, photoCount: rotatedCount };
+  }
+  
+  return { columns: normalCols, rows: normalRows, rotated: false, photoCount: normalCount };
+}
