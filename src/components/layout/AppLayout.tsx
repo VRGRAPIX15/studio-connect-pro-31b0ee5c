@@ -41,12 +41,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { title: 'Leads', href: '/leads', icon: Users, badge: 5 },
+  { title: 'Leads', href: '/leads', icon: Users },
   { title: 'Clients', href: '/clients', icon: UserCircle },
-  { title: 'Bookings', href: '/bookings', icon: Calendar, badge: 3 },
+  { title: 'Bookings', href: '/bookings', icon: Calendar },
   { title: 'Contracts', href: '/contracts', icon: FileText },
   { title: 'Invoices', href: '/invoices', icon: Receipt },
-  { title: 'Tasks', href: '/tasks', icon: ClipboardList, badge: 8 },
+  { title: 'Tasks', href: '/tasks', icon: ClipboardList },
   { title: 'Passport Photo', href: '/passport-photo', icon: Camera },
   { title: 'Settings', href: '/settings', icon: Settings },
 ];
