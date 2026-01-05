@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { PhotoSize, PhotoAdjustments, PrintLayout, PHOTO_SIZES, PRINT_LAYOUTS, defaultAdjustments } from '@/types/passport';
+import { PhotoSize, PhotoAdjustments, PrintLayout, PHOTO_SIZES, PRINT_LAYOUTS, defaultAdjustments, calculateOptimalLayout } from '@/types/passport';
 
 export function usePassportPhoto() {
   const [sourceImage, setSourceImage] = useState<string | null>(null);
@@ -8,6 +8,7 @@ export function usePassportPhoto() {
   const [selectedLayout, setSelectedLayout] = useState<PrintLayout>(PRINT_LAYOUTS[0]);
   const [adjustments, setAdjustments] = useState<PhotoAdjustments>(defaultAdjustments);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [numberOfCopies, setNumberOfCopies] = useState(1);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Load image from file
@@ -96,7 +97,7 @@ export function usePassportPhoto() {
     });
   }, [sourceImage, selectedSize, adjustments]);
 
-  // Generate print layout
+  // Generate print layout with auto-rotation
   const generatePrintLayout = useCallback(async (): Promise<string | null> => {
     if (!croppedImage) {
       await applyAdjustments();
@@ -122,14 +123,20 @@ export function usePassportPhoto() {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
+        // Calculate optimal layout with auto-rotation
+        const optimalLayout = calculateOptimalLayout(selectedSize, selectedLayout);
+        const { columns, rows, rotated } = optimalLayout;
+        
         // Calculate photo dimensions in pixels at 300 DPI
-        const photoWidthPx = (selectedSize.widthMM / 25.4) * DPI;
-        const photoHeightPx = (selectedSize.heightMM / 25.4) * DPI;
+        // If rotated, swap width and height
+        const photoWidthPx = rotated 
+          ? (selectedSize.heightMM / 25.4) * DPI 
+          : (selectedSize.widthMM / 25.4) * DPI;
+        const photoHeightPx = rotated 
+          ? (selectedSize.widthMM / 25.4) * DPI 
+          : (selectedSize.heightMM / 25.4) * DPI;
         const marginPx = (selectedLayout.marginMM / 25.4) * DPI;
         const gapPx = (selectedLayout.gapMM / 25.4) * DPI;
-        
-        // Calculate grid
-        const { columns, rows } = selectedLayout;
         
         // Calculate total grid size
         const totalGridWidth = columns * photoWidthPx + (columns - 1) * gapPx;
@@ -139,19 +146,34 @@ export function usePassportPhoto() {
         const startX = (canvas.width - totalGridWidth) / 2;
         const startY = (canvas.height - totalGridHeight) / 2;
         
+        // Calculate how many photos to draw based on numberOfCopies
+        const maxPhotos = columns * rows;
+        const photosToFill = Math.min(numberOfCopies, maxPhotos);
+        
         // Draw photos in grid
-        for (let row = 0; row < rows; row++) {
-          for (let col = 0; col < columns; col++) {
+        let photoCount = 0;
+        for (let row = 0; row < rows && photoCount < photosToFill; row++) {
+          for (let col = 0; col < columns && photoCount < photosToFill; col++) {
             const x = startX + col * (photoWidthPx + gapPx);
             const y = startY + row * (photoHeightPx + gapPx);
             
-            // Draw photo with high quality
-            ctx.drawImage(img, x, y, photoWidthPx, photoHeightPx);
+            if (rotated) {
+              // Rotate image 90 degrees when drawing
+              ctx.save();
+              ctx.translate(x + photoWidthPx / 2, y + photoHeightPx / 2);
+              ctx.rotate(Math.PI / 2);
+              ctx.drawImage(img, -photoHeightPx / 2, -photoWidthPx / 2, photoHeightPx, photoWidthPx);
+              ctx.restore();
+            } else {
+              ctx.drawImage(img, x, y, photoWidthPx, photoHeightPx);
+            }
             
             // Draw thin border for cutting guide
             ctx.strokeStyle = '#CCCCCC';
             ctx.lineWidth = 0.5;
             ctx.strokeRect(x, y, photoWidthPx, photoHeightPx);
+            
+            photoCount++;
           }
         }
         
@@ -198,7 +220,7 @@ export function usePassportPhoto() {
       };
       img.src = imageToUse;
     });
-  }, [croppedImage, applyAdjustments, selectedSize, selectedLayout]);
+  }, [croppedImage, applyAdjustments, selectedSize, selectedLayout, numberOfCopies]);
 
   // Download image
   const downloadImage = useCallback((dataUrl: string, filename: string) => {
@@ -261,7 +283,13 @@ export function usePassportPhoto() {
     setSourceImage(null);
     setCroppedImage(null);
     setAdjustments(defaultAdjustments);
+    setNumberOfCopies(1);
   }, []);
+
+  // Get optimal layout info for current photo size
+  const getLayoutInfo = useCallback(() => {
+    return calculateOptimalLayout(selectedSize, selectedLayout);
+  }, [selectedSize, selectedLayout]);
 
   return {
     // State
@@ -272,11 +300,13 @@ export function usePassportPhoto() {
     adjustments,
     isProcessing,
     canvasRef,
+    numberOfCopies,
     
     // Setters
     setSelectedSize,
     setSelectedLayout,
     setAdjustments,
+    setNumberOfCopies,
     
     // Actions
     loadImage,
@@ -287,6 +317,7 @@ export function usePassportPhoto() {
     downloadImage,
     printImage,
     clearAll,
+    getLayoutInfo,
     
     // Data
     photoSizes: PHOTO_SIZES,

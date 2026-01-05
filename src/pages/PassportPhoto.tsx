@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Camera, 
@@ -7,7 +7,6 @@ import {
   Printer, 
   RotateCcw, 
   ZoomIn, 
-  ZoomOut,
   Sun,
   Contrast,
   Droplets,
@@ -17,8 +16,9 @@ import {
   Image as ImageIcon,
   Trash2,
   Check,
-  ChevronDown,
-  Sparkles
+  Sparkles,
+  Minus,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,9 +28,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { usePassportPhoto } from '@/hooks/usePassportPhoto';
-import { PHOTO_SIZES, PRINT_LAYOUTS } from '@/types/passport';
+import { PHOTO_SIZES, calculateOptimalLayout, PRINT_LAYOUTS } from '@/types/passport';
 
 export default function PassportPhoto() {
   const {
@@ -40,9 +41,11 @@ export default function PassportPhoto() {
     selectedLayout,
     adjustments,
     isProcessing,
+    numberOfCopies,
     setSelectedSize,
     setSelectedLayout,
     setAdjustments,
+    setNumberOfCopies,
     loadImage,
     loadImageFromUrl,
     resetAdjustments,
@@ -51,6 +54,7 @@ export default function PassportPhoto() {
     downloadImage,
     printImage,
     clearAll,
+    getLayoutInfo,
   } = usePassportPhoto();
 
   const [activeTab, setActiveTab] = useState('capture');
@@ -59,6 +63,11 @@ export default function PassportPhoto() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Get layout info for current photo size
+  const layoutInfo = useMemo(() => {
+    return calculateOptimalLayout(selectedSize, selectedLayout);
+  }, [selectedSize, selectedLayout]);
 
   // Start camera
   const startCamera = useCallback(async () => {
@@ -205,7 +214,7 @@ export default function PassportPhoto() {
                 Passport Photo Studio
               </h1>
               <p className="text-muted-foreground">
-                Professional passport photos for all countries • Print-ready quality
+                Professional passport photos for all countries • 4×6 inch print
               </p>
             </div>
           </div>
@@ -280,6 +289,22 @@ export default function PassportPhoto() {
                     <div className="text-muted-foreground text-xs">Resolution</div>
                     <div className="font-medium">{selectedSize.dpi} DPI</div>
                   </div>
+                </div>
+
+                {/* Layout Info */}
+                <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">On 4×6 paper:</span>
+                    <Badge variant="secondary" className="font-semibold">
+                      {layoutInfo.photoCount} photos max
+                    </Badge>
+                  </div>
+                  {layoutInfo.rotated && (
+                    <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                      <RotateCw className="h-3 w-3" />
+                      Photos will be auto-rotated for best fit
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -480,76 +505,67 @@ export default function PassportPhoto() {
                         Print Layout
                       </CardTitle>
                       <CardDescription>
-                        Choose paper size and layout
+                        4×6 inch paper • Auto-fit with rotation
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {/* Paper size indicator */}
-                      <div className="flex gap-2 mb-2">
-                        <Badge 
-                          variant={selectedLayout.paperWidthInch === 4 ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => {
-                            const layout4x6 = PRINT_LAYOUTS.find(l => l.id.startsWith('4x6'));
-                            if (layout4x6) setSelectedLayout(layout4x6);
-                          }}
-                        >
-                          4×6 inch
-                        </Badge>
-                        <Badge 
-                          variant={selectedLayout.paperWidthInch === 5 ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => {
-                            const layout5x7 = PRINT_LAYOUTS.find(l => l.id.startsWith('5x7'));
-                            if (layout5x7) setSelectedLayout(layout5x7);
-                          }}
-                        >
-                          5×7 Maxi
-                        </Badge>
+                      {/* Number of copies */}
+                      <div className="space-y-2">
+                        <Label className="text-sm">Number of Photos</Label>
+                        <div className="flex items-center gap-3">
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => setNumberOfCopies(Math.max(1, numberOfCopies - 1))}
+                            disabled={numberOfCopies <= 1}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <Input
+                            type="number"
+                            value={numberOfCopies}
+                            onChange={(e) => setNumberOfCopies(Math.max(1, Math.min(layoutInfo.photoCount, parseInt(e.target.value) || 1)))}
+                            className="w-20 text-center"
+                            min={1}
+                            max={layoutInfo.photoCount}
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => setNumberOfCopies(Math.min(layoutInfo.photoCount, numberOfCopies + 1))}
+                            disabled={numberOfCopies >= layoutInfo.photoCount}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setNumberOfCopies(layoutInfo.photoCount)}
+                          >
+                            Fill ({layoutInfo.photoCount})
+                          </Button>
+                        </div>
                       </div>
 
-                      <Select
-                        value={selectedLayout.id}
-                        onValueChange={(id) => {
-                          const layout = PRINT_LAYOUTS.find(l => l.id === id);
-                          if (layout) setSelectedLayout(layout);
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select layout" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
-                            4×6 inch Paper
+                      <div className="p-3 rounded-lg bg-muted/50 text-sm space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Paper size:</span>
+                          <span className="font-medium">4×6 inch</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Layout:</span>
+                          <span className="font-medium">{layoutInfo.columns} × {layoutInfo.rows} grid</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Max photos:</span>
+                          <span className="font-medium">{layoutInfo.photoCount}</span>
+                        </div>
+                        {layoutInfo.rotated && (
+                          <div className="flex justify-between text-primary">
+                            <span>Auto-rotated:</span>
+                            <span className="font-medium">Yes (90°)</span>
                           </div>
-                          {PRINT_LAYOUTS.filter(l => l.paperWidthInch === 4).map((layout) => (
-                            <SelectItem key={layout.id} value={layout.id}>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline">
-                                  {layout.columns}×{layout.rows}
-                                </Badge>
-                                <span>{layout.name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 mt-1">
-                            5×7 Maxi Paper
-                          </div>
-                          {PRINT_LAYOUTS.filter(l => l.paperWidthInch === 5).map((layout) => (
-                            <SelectItem key={layout.id} value={layout.id}>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline">
-                                  {layout.columns}×{layout.rows}
-                                </Badge>
-                                <span>{layout.name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <div className="text-sm text-muted-foreground">
-                        This will create <strong>{selectedLayout.columns * selectedLayout.rows} photos</strong> on a {selectedLayout.paperWidthInch}×{selectedLayout.paperHeightInch} inch sheet
+                        )}
                       </div>
 
                       <Button 
@@ -557,7 +573,7 @@ export default function PassportPhoto() {
                         className="w-full"
                         disabled={isProcessing}
                       >
-                        {isProcessing ? 'Generating...' : 'Generate Print Layout'}
+                        {isProcessing ? 'Generating...' : `Generate ${numberOfCopies} Photo${numberOfCopies > 1 ? 's' : ''}`}
                       </Button>
                     </CardContent>
                   </Card>
@@ -599,9 +615,9 @@ export default function PassportPhoto() {
                 <CardContent className="pt-6">
                   {/* Capture Tab */}
                   <TabsContent value="capture" className="mt-0">
-                    <div className="relative aspect-[4/3] bg-muted/30 rounded-2xl overflow-hidden border-2 border-dashed border-border flex items-center justify-center">
+                    <div className="space-y-6">
                       {isCameraActive ? (
-                        <>
+                        <div className="relative aspect-[4/3] bg-black rounded-xl overflow-hidden">
                           <video
                             ref={videoRef}
                             autoPlay
@@ -609,76 +625,67 @@ export default function PassportPhoto() {
                             muted
                             className="w-full h-full object-cover"
                           />
-                          {/* Overlay guide */}
+                          {/* Camera overlay guide */}
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div 
-                              className="border-2 border-white/50 rounded-lg shadow-lg"
+                              className="border-2 border-dashed border-white/50 rounded-lg"
                               style={{
-                                width: `${selectedSize.widthMM * 2}px`,
-                                height: `${selectedSize.heightMM * 2}px`,
+                                width: '40%',
+                                aspectRatio: `${selectedSize.widthMM}/${selectedSize.heightMM}`
                               }}
-                            >
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-16 h-20 border border-white/30 rounded-full -mt-6" />
-                              </div>
-                            </div>
+                            />
                           </div>
-                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
-                            <Button
-                              size="lg"
-                              onClick={capturePhoto}
-                              className="rounded-full h-16 w-16 shadow-xl"
-                            >
-                              <Camera className="h-6 w-6" />
-                            </Button>
-                            <Button
-                              size="lg"
-                              variant="secondary"
-                              onClick={stopCamera}
-                              className="rounded-full h-16 w-16"
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </Button>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-center p-8">
-                          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
-                            <Camera className="h-10 w-10 text-primary" />
-                          </div>
-                          <h3 className="text-xl font-semibold mb-2">Capture or Upload Photo</h3>
-                          <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                            Use your camera to take a photo, upload from your device, or paste from clipboard
-                          </p>
-                          <div className="flex flex-wrap gap-3 justify-center">
-                            <Button size="lg" onClick={startCamera}>
+                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3">
+                            <Button size="lg" onClick={capturePhoto}>
                               <Camera className="h-5 w-5 mr-2" />
-                              Open Camera
+                              Capture
                             </Button>
-                            <Button 
-                              size="lg" 
-                              variant="outline"
-                              onClick={() => fileInputRef.current?.click()}
-                            >
-                              <Upload className="h-5 w-5 mr-2" />
-                              Upload Photo
-                            </Button>
-                            <Button 
-                              size="lg" 
-                              variant="outline"
-                              onClick={handlePaste}
-                            >
-                              <ImageIcon className="h-5 w-5 mr-2" />
-                              Paste Image
+                            <Button size="lg" variant="outline" onClick={stopCamera}>
+                              Cancel
                             </Button>
                           </div>
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          <div className="text-center py-12 border-2 border-dashed border-border rounded-xl bg-muted/20">
+                            <Camera className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2">Get Started</h3>
+                            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                              Take a photo using your camera, upload an existing photo, or paste from clipboard
+                            </p>
+                            <div className="flex flex-wrap gap-3 justify-center">
+                              <Button size="lg" onClick={startCamera}>
+                                <Camera className="h-5 w-5 mr-2" />
+                                Use Camera
+                              </Button>
+                              <Button size="lg" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                <Upload className="h-5 w-5 mr-2" />
+                                Upload Photo
+                              </Button>
+                              <Button size="lg" variant="outline" onClick={handlePaste}>
+                                <ImageIcon className="h-5 w-5 mr-2" />
+                                Paste
+                              </Button>
+                            </div>
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handleFileUpload}
+                              className="hidden"
+                            />
+                          </div>
+
+                          <div className="bg-muted/30 rounded-lg p-4 text-sm">
+                            <h4 className="font-medium mb-2">Tips for a perfect passport photo:</h4>
+                            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                              <li>Use a plain white or light-colored background</li>
+                              <li>Face the camera directly with a neutral expression</li>
+                              <li>Ensure good, even lighting with no shadows</li>
+                              <li>Keep your head straight and centered</li>
+                              <li>Remove glasses (unless required for medical reasons)</li>
+                            </ul>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -686,71 +693,60 @@ export default function PassportPhoto() {
 
                   {/* Adjust Tab */}
                   <TabsContent value="adjust" className="mt-0">
-                    <div className="grid md:grid-cols-2 gap-6">
-                      {/* Original Image */}
-                      <div>
-                        <h4 className="text-sm font-medium mb-3 text-muted-foreground">Original</h4>
-                        <div 
-                          className="relative bg-muted/30 rounded-xl overflow-hidden border"
-                          style={{ aspectRatio: `${selectedSize.widthMM}/${selectedSize.heightMM}` }}
-                        >
-                          {sourceImage && (
-                            <img
-                              src={sourceImage}
-                              alt="Original"
-                              className="w-full h-full object-cover"
-                              style={{
-                                filter: `brightness(${adjustments.brightness}%) contrast(${adjustments.contrast}%) saturate(${adjustments.saturation}%)`,
-                                transform: `rotate(${adjustments.rotation}deg) scale(${adjustments.scale}) translate(${adjustments.offsetX}px, ${adjustments.offsetY}px)`,
-                              }}
-                            />
-                          )}
+                    <div className="space-y-6">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        {/* Original */}
+                        <div className="space-y-2">
+                          <Label className="text-sm text-muted-foreground">Original</Label>
+                          <div className="relative aspect-[3/4] bg-muted rounded-xl overflow-hidden">
+                            {sourceImage && (
+                              <img
+                                src={sourceImage}
+                                alt="Original"
+                                className="w-full h-full object-contain"
+                              />
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Preview */}
+                        <div className="space-y-2">
+                          <Label className="text-sm text-muted-foreground">
+                            Preview ({selectedSize.widthMM}×{selectedSize.heightMM}mm)
+                          </Label>
+                          <div 
+                            className="relative bg-muted rounded-xl overflow-hidden flex items-center justify-center p-4"
+                            style={{ aspectRatio: '3/4' }}
+                          >
+                            {croppedImage ? (
+                              <img
+                                src={croppedImage}
+                                alt="Preview"
+                                className="max-w-full max-h-full object-contain shadow-lg"
+                                style={{
+                                  aspectRatio: `${selectedSize.widthMM}/${selectedSize.heightMM}`
+                                }}
+                              />
+                            ) : (
+                              <div className="text-center text-muted-foreground">
+                                <p>Click "Apply Adjustments" to preview</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Preview */}
-                      <div>
-                        <h4 className="text-sm font-medium mb-3 text-muted-foreground">
-                          Preview ({selectedSize.widthMM}×{selectedSize.heightMM}mm)
-                        </h4>
-                        <div 
-                          className="relative rounded-xl overflow-hidden border-2 border-primary/30 shadow-lg"
-                          style={{ 
-                            aspectRatio: `${selectedSize.widthMM}/${selectedSize.heightMM}`,
-                            backgroundColor: selectedSize.bgColor
-                          }}
-                        >
-                          {croppedImage ? (
-                            <img
-                              src={croppedImage}
-                              alt="Cropped"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : sourceImage ? (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <p className="text-sm text-muted-foreground text-center px-4">
-                                Click "Apply Adjustments" to generate preview
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <p className="text-sm text-muted-foreground">No image</p>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Size specs */}
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Badge variant="secondary">
-                            {selectedSize.widthPx}×{selectedSize.heightPx}px
-                          </Badge>
-                          <Badge variant="secondary">
-                            {selectedSize.dpi} DPI
-                          </Badge>
-                          <Badge variant="outline">
-                            {selectedSize.country}
-                          </Badge>
-                        </div>
+                      {/* Selected size info */}
+                      <div className="flex items-center gap-4 justify-center">
+                        <Badge variant="secondary" className="text-sm py-1.5 px-4">
+                          {selectedSize.name}
+                        </Badge>
+                        <Badge variant="outline" className="text-sm py-1.5 px-4 font-mono">
+                          {selectedSize.widthMM}×{selectedSize.heightMM}mm
+                        </Badge>
+                        <Badge variant="outline">
+                          {selectedSize.country}
+                        </Badge>
                       </div>
                     </div>
                   </TabsContent>
@@ -768,13 +764,14 @@ export default function PassportPhoto() {
                           {/* Paper size indicator */}
                           <div className="absolute bottom-2 right-2">
                             <Badge className="bg-black/70 text-white">
-                              {selectedLayout.paperWidthInch}×{selectedLayout.paperHeightInch} inch • 300 DPI
+                              4×6 inch • 300 DPI
                             </Badge>
                           </div>
                         </div>
 
                         <div className="text-center text-sm text-muted-foreground">
-                          {selectedLayout.columns * selectedLayout.rows} photos of {selectedSize.name} on {selectedLayout.paperWidthInch}×{selectedLayout.paperHeightInch} inch paper
+                          {numberOfCopies} photo{numberOfCopies > 1 ? 's' : ''} of {selectedSize.name} on 4×6 inch paper
+                          {layoutInfo.rotated && ' (auto-rotated for best fit)'}
                         </div>
 
                         <div className="flex flex-wrap gap-3 justify-center">
