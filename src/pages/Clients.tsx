@@ -1,153 +1,236 @@
 import { useState } from 'react';
-import { Plus, Search, Users } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useClients } from '@/hooks/useClients';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useClients } from '@/hooks/useClients';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  Plus, 
+  Search, 
+  LayoutGrid, 
+  List,
+  SortAsc
+} from 'lucide-react';
+import { AddClientDialog } from '@/components/clients/AddClientDialog';
 import { ClientTable } from '@/components/clients/ClientTable';
 import { ClientCard } from '@/components/clients/ClientCard';
-import { AddClientDialog } from '@/components/clients/AddClientDialog';
 import { ClientDetailSheet } from '@/components/clients/ClientDetailSheet';
-import { Client } from '@/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { Client } from '@/types';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export default function Clients() {
-  const { clients, isLoading, addClient, updateClient, deleteClient, getClientStats } = useClients();
+  const { clients, addClient, updateClient, deleteClient } = useClients();
+  const [view, setView] = useState<'grid' | 'table'>('table');
   const [searchQuery, setSearchQuery] = useState('');
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
-  const stats = getClientStats();
+  // Filter and sort clients
+  const filteredClients = clients
+    .filter(client => {
+      const matchesSearch = 
+        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.phone.includes(searchQuery) ||
+        client.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      return matchesSearch;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'recent':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'bookings':
+          return b.totalBookings - a.totalBookings;
+        case 'spent':
+          return b.totalSpent - a.totalSpent;
+        default:
+          return 0;
+      }
+    });
 
-  // Filter clients
-  const filteredClients = clients.filter(client => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      client.name.toLowerCase().includes(query) ||
-      client.phone.includes(searchQuery) ||
-      client.email?.toLowerCase().includes(query)
-    );
-  });
-
-  const handleClientClick = (client: Client) => {
-    setSelectedClient(client);
-    setDetailSheetOpen(true);
+  const handleAddClient = (clientData: Omit<Client, 'id' | 'createdAt' | 'totalBookings' | 'totalSpent'>) => {
+    addClient(clientData);
+    setIsAddDialogOpen(false);
   };
 
-  // Format currency for display
-  const formatCurrency = (value: number) => {
-    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
-    return `₹${(value / 1000).toFixed(0)}K`;
+  const handleUpdateClient = (id: string, updates: Partial<Client>) => {
+    updateClient(id, updates);
+    if (selectedClient?.id === id) {
+      setSelectedClient({ ...selectedClient, ...updates });
+    }
   };
+
+  const handleDeleteClient = (id: string) => {
+    deleteClient(id);
+    setSelectedClient(null);
+  };
+
+  // Calculate stats
+  const totalClients = clients.length;
+  const totalRevenue = clients.reduce((sum, c) => sum + c.totalSpent, 0);
+  const avgBookings = clients.length > 0 
+    ? Math.round(clients.reduce((sum, c) => sum + c.totalBookings, 0) / clients.length * 10) / 10
+    : 0;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">Client Database</h1>
-          <p className="text-muted-foreground">
-            {stats.totalClients} clients • {stats.totalBookings} bookings • {formatCurrency(stats.totalRevenue)} revenue
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-foreground">
+            Client Database
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your client relationships
           </p>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
+        <Button 
+          onClick={() => setIsAddDialogOpen(true)}
+          className="gap-2 bg-primary hover:bg-primary/90"
+        >
           <Plus className="h-4 w-4" />
           Add Client
         </Button>
-      </div>
+      </motion.div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg border border-border/50 bg-card/50">
+      {/* Stats */}
+      <motion.div variants={itemVariants} className="grid grid-cols-3 gap-4">
+        <div className="bg-card rounded-lg border border-border/50 p-4">
           <p className="text-sm text-muted-foreground">Total Clients</p>
-          <p className="text-2xl font-bold text-foreground">{stats.totalClients}</p>
+          <p className="text-2xl font-bold text-foreground">{totalClients}</p>
         </div>
-        <div className="p-4 rounded-lg border border-border/50 bg-card/50">
-          <p className="text-sm text-muted-foreground">Total Bookings</p>
-          <p className="text-2xl font-bold text-foreground">{stats.totalBookings}</p>
-        </div>
-        <div className="p-4 rounded-lg border border-border/50 bg-card/50">
+        <div className="bg-card rounded-lg border border-border/50 p-4">
           <p className="text-sm text-muted-foreground">Total Revenue</p>
-          <p className="text-2xl font-bold text-primary">{formatCurrency(stats.totalRevenue)}</p>
+          <p className="text-2xl font-bold text-foreground">₹{(totalRevenue / 100000).toFixed(1)}L</p>
         </div>
-        <div className="p-4 rounded-lg border border-border/50 bg-card/50">
-          <p className="text-sm text-muted-foreground">Avg. Spend</p>
-          <p className="text-2xl font-bold text-foreground">{formatCurrency(stats.averageSpend)}</p>
+        <div className="bg-card rounded-lg border border-border/50 p-4">
+          <p className="text-sm text-muted-foreground">Avg. Bookings</p>
+          <p className="text-2xl font-bold text-foreground">{avgBookings}</p>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, phone, or email..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+      {/* Filters and Search */}
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search clients by name, phone, or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-background border-border"
+          />
+        </div>
+        
+        <div className="flex gap-2">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[160px] bg-background border-border">
+              <SortAsc className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name (A-Z)</SelectItem>
+              <SelectItem value="recent">Most Recent</SelectItem>
+              <SelectItem value="bookings">Most Bookings</SelectItem>
+              <SelectItem value="spent">Highest Spent</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* View Toggle */}
+          <div className="flex border border-border rounded-lg overflow-hidden">
+            <Button
+              variant={view === 'grid' ? 'default' : 'ghost'}
+              size="icon"
+              onClick={() => setView('grid')}
+              className={view === 'grid' ? 'bg-primary' : ''}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={view === 'table' ? 'default' : 'ghost'}
+              size="icon"
+              onClick={() => setView('table')}
+              className={view === 'table' ? 'bg-primary' : ''}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Client Count */}
+      <motion.div variants={itemVariants}>
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredClients.length} of {clients.length} clients
+        </p>
+      </motion.div>
 
       {/* Content */}
-      <Tabs defaultValue="table" className="space-y-4">
-        <TabsList className="bg-muted/50">
-          <TabsTrigger value="table">Table View</TabsTrigger>
-          <TabsTrigger value="cards">Card View</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="table">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <ClientTable
-              clients={filteredClients}
-              onClientClick={handleClientClick}
-              onDelete={deleteClient}
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="cards">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : filteredClients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-              <Users className="h-12 w-12 mb-4 opacity-50" />
-              <p>No clients found</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredClients.map(client => (
-                <ClientCard
-                  key={client.id}
-                  client={client}
-                  onClick={() => handleClientClick(client)}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      <motion.div variants={itemVariants}>
+        {view === 'table' ? (
+          <ClientTable 
+            clients={filteredClients} 
+            onClientClick={setSelectedClient}
+            onDelete={handleDeleteClient}
+          />
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredClients.map(client => (
+              <ClientCard 
+                key={client.id}
+                client={client}
+                onClick={() => setSelectedClient(client)}
+              />
+            ))}
+            {filteredClients.length === 0 && (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                No clients found matching your search
+              </div>
+            )}
+          </div>
+        )}
+      </motion.div>
 
       {/* Add Client Dialog */}
       <AddClientDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onSubmit={addClient}
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onSubmit={handleAddClient}
       />
 
       {/* Client Detail Sheet */}
       <ClientDetailSheet
         client={selectedClient}
-        open={detailSheetOpen}
-        onOpenChange={setDetailSheetOpen}
-        onUpdate={updateClient}
-        onDelete={deleteClient}
+        open={!!selectedClient}
+        onOpenChange={(open) => !open && setSelectedClient(null)}
+        onUpdate={handleUpdateClient}
+        onDelete={handleDeleteClient}
       />
-    </div>
+    </motion.div>
   );
 }

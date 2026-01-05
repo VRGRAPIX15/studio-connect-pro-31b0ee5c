@@ -131,15 +131,42 @@ export interface Payment {
 }
 
 // Contracts
+export type ContractStatus = 'draft' | 'sent' | 'signed' | 'expired' | 'cancelled';
+
+export interface ContractTemplate {
+  id: string;
+  name: string;
+  eventType: EventType;
+  content: string;
+  terms: string;
+  isDefault: boolean;
+  createdAt: Date;
+}
+
 export interface Contract {
   id: string;
+  contractNumber: string;
   bookingId: string;
   clientId: string;
+  clientName: string;
+  clientEmail?: string;
   templateId: string;
+  eventType: EventType;
+  eventDate: Date;
+  venue?: string;
+  packageName: string;
+  totalAmount: number;
   content: string;
+  terms: string;
+  status: ContractStatus;
+  sentAt?: Date;
   signedAt?: Date;
+  expiresAt?: Date;
   signatureUrl?: string;
+  signerName?: string;
+  signerIp?: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 // Tasks & Workflows

@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { motion } from 'framer-motion';
+import { Eye, EyeOff, Camera, Loader2, Mail, Lock } from 'lucide-react';
 import logoFull from '@/assets/logo-full.png';
 
 export default function Login() {
@@ -15,46 +14,38 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const success = await login(email, password);
-      if (success) {
-        toast({
-          title: 'Welcome back!',
-          description: 'You have successfully logged in.',
-        });
-        navigate('/dashboard');
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Login failed',
-          description: 'Invalid email or password. Please try again.',
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Something went wrong. Please try again.',
-      });
-    } finally {
-      setIsLoading(false);
+    setError('');
+    
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
     }
+
+    setIsLoading(true);
+    
+    const success = await login(email, password);
+    
+    if (success) {
+      navigate('/dashboard');
+    } else {
+      setError('Invalid email or password');
+    }
+    
+    setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-accent/20">
-      {/* Background Pattern */}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+      {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
       </div>
 
       <motion.div
@@ -63,55 +54,71 @@ export default function Login() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md relative z-10"
       >
-        <Card className="border-border/50 shadow-soft-lg">
-          <CardHeader className="space-y-4 text-center pb-2">
+        <Card className="border-border/50 shadow-2xl backdrop-blur-sm bg-card/95">
+          <CardHeader className="text-center space-y-4 pb-2">
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="flex justify-center"
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="mx-auto"
             >
               <img 
                 src={logoFull} 
-                alt="Varnika Visuals Studio" 
-                className="h-28 w-auto object-contain"
+                alt="Varnika Visuals" 
+                className="h-16 mx-auto object-contain"
               />
             </motion.div>
             <div>
-              <CardTitle className="text-2xl font-display">Welcome Back</CardTitle>
-              <CardDescription className="mt-1">
-                Sign in to access your studio CRM
+              <CardTitle className="text-2xl font-display text-foreground">
+                Welcome Back
+              </CardTitle>
+              <CardDescription className="text-muted-foreground mt-1">
+                Sign in to manage your studio
               </CardDescription>
             </div>
           </CardHeader>
-
+          
           <CardContent className="pt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="h-11"
-                  autoComplete="email"
-                />
-              </div>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm text-center"
+                >
+                  {error}
+                </motion.div>
+              )}
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="email" className="text-foreground">Email</Label>
                 <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your.email@studio.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 bg-background/50 border-border focus:border-primary"
+                    disabled={isLoading}
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-foreground">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11 pr-10"
+                    className="pl-10 pr-10 bg-background/50 border-border focus:border-primary"
+                    disabled={isLoading}
                     autoComplete="current-password"
                   />
                   <button
@@ -119,18 +126,14 @@ export default function Login() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-11 bg-gold-gradient hover:opacity-90 transition-opacity text-white font-medium"
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -139,32 +142,18 @@ export default function Login() {
                     Signing in...
                   </>
                 ) : (
-                  'Sign In'
+                  "Sign In"
                 )}
               </Button>
             </form>
 
-            {/* Demo Credentials */}
-            <div className="mt-6 p-4 rounded-lg bg-muted/50 border border-border/50">
-              <p className="text-sm font-medium text-foreground mb-2">Demo Credentials:</p>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <p><span className="font-medium">Owner:</span> owner@varnika.studio</p>
-                <p><span className="font-medium">Manager:</span> manager@varnika.studio</p>
-                <p><span className="font-medium">Staff:</span> staff@varnika.studio</p>
-                <p><span className="font-medium">Password:</span> demo123</p>
-              </div>
+            {/* Branding footer */}
+            <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Camera className="h-3 w-3" />
+              <span>Varnika Visuals & SD Event Avenue</span>
             </div>
           </CardContent>
         </Card>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center text-sm text-muted-foreground mt-6"
-        >
-          Varnika Visuals Studio & SD Event Avenue
-        </motion.p>
       </motion.div>
     </div>
   );

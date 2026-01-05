@@ -1,68 +1,136 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Client, LeadSource } from '@/types';
-import { demoClients } from '@/data/demoData';
+import { API_CONFIG } from '@/config/api';
 import { toast } from 'sonner';
-
-const STORAGE_KEY = 'studio-crm-clients';
 
 export function useClients() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load clients from localStorage or use demo data
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Convert date strings back to Date objects
-      const clientsWithDates = parsed.map((client: Client) => ({
-        ...client,
-        createdAt: new Date(client.createdAt),
-        lastEventDate: client.lastEventDate ? new Date(client.lastEventDate) : undefined,
-      }));
-      setClients(clientsWithDates);
-    } else {
-      setClients(demoClients);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(demoClients));
+  // Fetch clients from API
+  const fetchClients = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${API_CONFIG.GOOGLE_SCRIPT_URL}?action=getClients`);
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        const clientsWithDates = data.map((client: any) => ({
+          id: client.Id,
+          name: client.Name,
+          phone: client.Phone,
+          email: client.Email || undefined,
+          address: client.Address || undefined,
+          source: (client.Source || 'walkin') as LeadSource,
+          totalBookings: Number(client.TotalBookings) || 0,
+          totalSpent: Number(client.TotalSpent) || 0,
+          notes: client.Notes || undefined,
+          createdAt: new Date(client.CreatedAt),
+          lastEventDate: client.LastEventDate ? new Date(client.LastEventDate) : undefined,
+        }));
+        setClients(clientsWithDates);
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      toast.error('Failed to load clients');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
-  // Save to localStorage whenever clients change
-  const saveClients = useCallback((newClients: Client[]) => {
-    setClients(newClients);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newClients));
-  }, []);
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
 
-  const addClient = useCallback((clientData: Omit<Client, 'id' | 'createdAt' | 'totalBookings' | 'totalSpent'>) => {
-    const newClient: Client = {
-      ...clientData,
-      id: `client-${Date.now()}`,
-      createdAt: new Date(),
-      totalBookings: 0,
-      totalSpent: 0,
-    };
-    const updatedClients = [newClient, ...clients];
-    saveClients(updatedClients);
-    toast.success('Client added successfully');
-    return newClient;
-  }, [clients, saveClients]);
+  const addClient = useCallback(async (clientData: Omit<Client, 'id' | 'createdAt' | 'totalBookings' | 'totalSpent'>) => {
+    try {
+      const response = await fetch(API_CONFIG.GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'addClient',
+          client: {
+            Name: clientData.name,
+            Phone: clientData.phone,
+            Email: clientData.email || '',
+            Address: clientData.address || '',
+            Source: clientData.source || 'walkin',
+            Notes: clientData.notes || '',
+          },
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Client added successfully');
+        fetchClients();
+        return result.client;
+      } else {
+        toast.error(result.error || 'Failed to add client');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error adding client:', error);
+      toast.error('Failed to add client');
+      return null;
+    }
+  }, [fetchClients]);
 
-  const updateClient = useCallback((id: string, updates: Partial<Client>) => {
-    const updatedClients = clients.map(client =>
-      client.id === id
-        ? { ...client, ...updates }
-        : client
-    );
-    saveClients(updatedClients);
-    toast.success('Client updated successfully');
-  }, [clients, saveClients]);
+  const updateClient = useCallback(async (id: string, updates: Partial<Client>) => {
+    try {
+      const response = await fetch(API_CONFIG.GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'updateClient',
+          id,
+          client: {
+            Name: updates.name,
+            Phone: updates.phone,
+            Email: updates.email,
+            Address: updates.address,
+            Source: updates.source,
+            Notes: updates.notes,
+          },
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Client updated successfully');
+        fetchClients();
+      } else {
+        toast.error(result.error || 'Failed to update client');
+      }
+    } catch (error) {
+      console.error('Error updating client:', error);
+      toast.error('Failed to update client');
+    }
+  }, [fetchClients]);
 
-  const deleteClient = useCallback((id: string) => {
-    const updatedClients = clients.filter(client => client.id !== id);
-    saveClients(updatedClients);
-    toast.success('Client deleted successfully');
-  }, [clients, saveClients]);
+  const deleteClient = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(API_CONFIG.GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'deleteClient', id }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Client deleted successfully');
+        fetchClients();
+      } else {
+        toast.error(result.error || 'Failed to delete client');
+      }
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast.error('Failed to delete client');
+    }
+  }, [fetchClients]);
 
   const getClientById = useCallback((id: string) => {
     return clients.find(client => client.id === id);
@@ -104,5 +172,6 @@ export function useClients() {
     searchClients,
     getTopClients,
     getClientStats,
+    refetch: fetchClients,
   };
 }

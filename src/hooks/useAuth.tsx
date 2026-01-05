@@ -1,5 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, AuthState } from '@/types';
+import { API_CONFIG } from '@/config/api';
+import { toast } from 'sonner';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
@@ -8,37 +10,6 @@ interface AuthContextType extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Demo users for testing
-const DEMO_USERS: User[] = [
-  {
-    id: '1',
-    email: 'owner@varnika.studio',
-    name: 'Varnika Owner',
-    phone: '+91 9876543210',
-    role: 'owner',
-    createdAt: new Date('2024-01-01'),
-    isActive: true,
-  },
-  {
-    id: '2',
-    email: 'manager@varnika.studio',
-    name: 'Studio Manager',
-    phone: '+91 9876543211',
-    role: 'manager',
-    createdAt: new Date('2024-01-15'),
-    isActive: true,
-  },
-  {
-    id: '3',
-    email: 'staff@varnika.studio',
-    name: 'Staff Member',
-    phone: '+91 9876543212',
-    role: 'staff',
-    createdAt: new Date('2024-02-01'),
-    isActive: true,
-  },
-];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({
@@ -53,6 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser);
+        // Convert dates
+        if (user.createdAt) user.createdAt = new Date(user.createdAt);
+        if (user.lastLogin) user.lastLogin = new Date(user.lastLogin);
         setAuthState({
           user,
           isAuthenticated: true,
@@ -68,21 +42,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Demo login - in production this would call your backend
-    const user = DEMO_USERS.find(u => u.email === email);
-    
-    if (user && password === 'demo123') {
-      const loggedInUser = { ...user, lastLogin: new Date() };
-      localStorage.setItem('crm_user', JSON.stringify(loggedInUser));
-      setAuthState({
-        user: loggedInUser,
-        isAuthenticated: true,
-        isLoading: false,
+    try {
+      const response = await fetch(API_CONFIG.GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+        },
+        body: JSON.stringify({
+          action: 'login',
+          email,
+          password,
+        }),
       });
-      return true;
+
+      const result = await response.json();
+
+      if (result.success && result.user) {
+        const user: User = {
+          id: result.user.Id,
+          email: result.user.Email,
+          name: result.user.Name,
+          phone: result.user.Phone || '',
+          role: result.user.Role as 'owner' | 'manager' | 'staff',
+          avatar: result.user.Avatar || '',
+          createdAt: new Date(result.user.CreatedAt),
+          lastLogin: new Date(),
+          isActive: result.user.IsActive,
+        };
+
+        localStorage.setItem('crm_user', JSON.stringify(user));
+        setAuthState({
+          user,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+        toast.success(`Welcome back, ${user.name}!`);
+        return true;
+      } else {
+        toast.error(result.error || 'Invalid email or password');
+        return false;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Unable to connect to server. Please try again.');
+      return false;
     }
-    
-    return false;
   };
 
   const logout = () => {
@@ -92,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: false,
       isLoading: false,
     });
+    toast.success('Logged out successfully');
   };
 
   const updateUser = (updates: Partial<User>) => {

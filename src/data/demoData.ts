@@ -1,4 +1,4 @@
-import { Lead, Client, Booking, Invoice, Task, User, DashboardStats } from '@/types';
+import { Lead, Client, Booking, Invoice, Task, User, DashboardStats, Contract, ContractTemplate } from '@/types';
 
 // Team Members
 export const teamMembers: User[] = [
@@ -524,6 +524,370 @@ export const demoTasks: Task[] = [
     status: 'pending',
     dueDate: new Date('2026-01-25'),
     createdAt: new Date('2026-01-18'),
+  },
+];
+
+// Contract Templates
+export const demoContractTemplates: ContractTemplate[] = [
+  {
+    id: 'template-1',
+    name: 'Wedding Photography Contract',
+    eventType: 'wedding',
+    content: `PHOTOGRAPHY SERVICES AGREEMENT
+
+This Agreement is entered into between Varnika Visuals & SD Event Avenue ("Photographer") and {{clientName}} ("Client") for photography services.
+
+EVENT DETAILS:
+- Event Date: {{eventDate}}
+- Venue: {{venue}}
+- Package: {{packageName}}
+
+SERVICES INCLUDED:
+The Photographer agrees to provide professional photography services for the wedding event, including:
+• Pre-wedding consultation
+• Full day photography coverage
+• Professional editing of selected images
+• High-resolution digital images
+• Online gallery access
+• {{packageName}} deliverables as per package selected
+
+TOTAL FEE: {{totalAmount}}
+
+PAYMENT TERMS:
+• 50% advance payment required to confirm booking
+• Remaining 50% due 7 days before the event
+• Additional services billed separately
+
+The Photographer will deliver the final edited images within 4-6 weeks after the event date.`,
+    terms: `TERMS AND CONDITIONS:
+
+1. BOOKING & PAYMENT
+- A 50% non-refundable deposit is required to secure the date
+- Final payment must be received 7 days before the event
+- Additional hours beyond the agreed coverage will be billed at ₹5,000/hour
+
+2. CANCELLATION POLICY
+- Cancellation 30+ days before event: 50% refund of deposit
+- Cancellation 15-30 days before event: 25% refund of deposit
+- Cancellation less than 15 days: No refund
+
+3. IMAGE DELIVERY
+- Edited images delivered within 4-6 weeks
+- Raw/unedited files are not provided
+- Client receives full print rights for personal use
+
+4. LIABILITY
+- Photographer is not liable for unforeseen circumstances
+- Backup equipment will be used in case of technical failures
+- Client responsible for obtaining necessary venue permissions
+
+5. COPYRIGHT
+- Photographer retains copyright of all images
+- Images may be used for portfolio and marketing purposes
+- Client receives license for personal, non-commercial use
+
+By signing below, both parties agree to the terms outlined in this agreement.`,
+    isDefault: true,
+    createdAt: new Date('2024-01-01'),
+  },
+  {
+    id: 'template-2',
+    name: 'Engagement Photography Contract',
+    eventType: 'engagement',
+    content: `ENGAGEMENT PHOTOGRAPHY AGREEMENT
+
+This Agreement is made between Varnika Visuals & SD Event Avenue ("Photographer") and {{clientName}} ("Client").
+
+EVENT DETAILS:
+- Event Date: {{eventDate}}
+- Venue: {{venue}}
+- Package: {{packageName}}
+
+SERVICES:
+Professional engagement ceremony photography including:
+• Full event coverage
+• Professional editing
+• High-resolution digital images
+• Online gallery
+
+TOTAL FEE: {{totalAmount}}
+
+PAYMENT:
+• 50% advance to confirm booking
+• Balance due before event date`,
+    terms: `TERMS:
+1. 50% deposit required for booking confirmation
+2. Cancellation within 7 days: No refund
+3. Images delivered within 2-3 weeks
+4. Photographer retains image copyright
+5. Client receives personal use license`,
+    isDefault: true,
+    createdAt: new Date('2024-01-01'),
+  },
+  {
+    id: 'template-3',
+    name: 'Corporate Event Contract',
+    eventType: 'corporate',
+    content: `CORPORATE EVENT PHOTOGRAPHY AGREEMENT
+
+Agreement between Varnika Visuals & SD Event Avenue ("Photographer") and {{clientName}} ("Client").
+
+EVENT DETAILS:
+- Date: {{eventDate}}
+- Location: {{venue}}
+- Package: {{packageName}}
+
+SCOPE OF WORK:
+• Professional event photography
+• Executive portraits (if required)
+• Stage and presentation coverage
+• Networking moments capture
+• Same-day preview (optional)
+
+TOTAL FEE: {{totalAmount}}
+
+DELIVERABLES:
+• Edited high-resolution images
+• Quick turnaround within 1 week
+• Commercial usage rights included`,
+    terms: `TERMS:
+1. Full payment required before event
+2. Cancellation policy: 50% fee if cancelled within 7 days
+3. Commercial usage rights included in fee
+4. Re-editing requests: 2 rounds included
+5. Extended hours billed at ₹4,000/hour`,
+    isDefault: true,
+    createdAt: new Date('2024-01-01'),
+  },
+  {
+    id: 'template-4',
+    name: 'Birthday/Baby Shower Contract',
+    eventType: 'birthday',
+    content: `CELEBRATION PHOTOGRAPHY AGREEMENT
+
+Between Varnika Visuals & SD Event Avenue and {{clientName}}.
+
+EVENT: Birthday/Celebration Photography
+DATE: {{eventDate}}
+VENUE: {{venue}}
+PACKAGE: {{packageName}}
+
+SERVICES:
+• Professional photography coverage
+• Candid and posed shots
+• Edited digital images
+• Online gallery access
+
+TOTAL: {{totalAmount}}`,
+    terms: `TERMS:
+1. 50% advance required
+2. Balance due on event day
+3. Images delivered within 2 weeks
+4. Personal use license included`,
+    isDefault: false,
+    createdAt: new Date('2024-01-01'),
+  },
+  {
+    id: 'template-5',
+    name: 'General Photography Contract',
+    eventType: 'other',
+    content: `PHOTOGRAPHY SERVICES AGREEMENT
+
+This Agreement is between Varnika Visuals & SD Event Avenue ("Photographer") and {{clientName}} ("Client").
+
+SERVICE DETAILS:
+- Date: {{eventDate}}
+- Location: {{venue}}
+- Package: {{packageName}}
+- Fee: {{totalAmount}}
+
+The Photographer agrees to provide professional photography services as discussed and agreed upon with the Client.`,
+    terms: `STANDARD TERMS:
+1. Advance payment required for booking
+2. Cancellation subject to refund policy
+3. Images delivered as per agreed timeline
+4. Photographer retains copyright
+5. Client receives usage license`,
+    isDefault: true,
+    createdAt: new Date('2024-01-01'),
+  },
+];
+
+// Demo Contracts
+export const demoContracts: Contract[] = [
+  {
+    id: 'contract-1',
+    contractNumber: 'VV-CON-2026-001',
+    bookingId: 'booking-1',
+    clientId: 'client-1',
+    clientName: 'Arjun Mehta',
+    clientEmail: 'arjun.mehta@gmail.com',
+    templateId: 'template-1',
+    eventType: 'wedding',
+    eventDate: new Date('2026-01-25'),
+    venue: 'Taj Falaknuma Palace, Hyderabad',
+    packageName: 'Premium Wedding Package',
+    totalAmount: 350000,
+    content: `PHOTOGRAPHY SERVICES AGREEMENT
+
+This Agreement is entered into between Varnika Visuals & SD Event Avenue ("Photographer") and Arjun Mehta ("Client") for photography services.
+
+EVENT DETAILS:
+- Event Date: 25 January 2026
+- Venue: Taj Falaknuma Palace, Hyderabad
+- Package: Premium Wedding Package
+
+SERVICES INCLUDED:
+The Photographer agrees to provide professional photography services for the wedding event, including:
+• Pre-wedding consultation
+• Full day photography coverage (2 days)
+• Professional editing of selected images
+• High-resolution digital images
+• Online gallery access
+• Drone coverage
+• Premium photo album (2 copies)
+
+TOTAL FEE: ₹3,50,000`,
+    terms: `TERMS AND CONDITIONS:
+
+1. BOOKING & PAYMENT
+- 50% advance payment of ₹1,75,000 received
+- Remaining ₹1,75,000 due 7 days before the event
+
+2. CANCELLATION POLICY
+- As per standard terms
+
+3. IMAGE DELIVERY
+- Edited images delivered within 4-6 weeks
+
+By signing below, both parties agree to the terms outlined in this agreement.`,
+    status: 'signed',
+    sentAt: new Date('2025-12-29'),
+    signedAt: new Date('2025-12-30'),
+    signatureUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    signerName: 'Arjun Mehta',
+    createdAt: new Date('2025-12-28'),
+    updatedAt: new Date('2025-12-30'),
+  },
+  {
+    id: 'contract-2',
+    contractNumber: 'VV-CON-2026-002',
+    bookingId: 'booking-2',
+    clientId: 'client-2',
+    clientName: 'Pooja Sharma',
+    clientEmail: 'pooja.sharma@outlook.com',
+    templateId: 'template-2',
+    eventType: 'engagement',
+    eventDate: new Date('2026-01-18'),
+    venue: 'Novotel HICC, Hyderabad',
+    packageName: 'Engagement Special',
+    totalAmount: 85000,
+    content: `ENGAGEMENT PHOTOGRAPHY AGREEMENT
+
+This Agreement is made between Varnika Visuals & SD Event Avenue ("Photographer") and Pooja Sharma ("Client").
+
+EVENT DETAILS:
+- Event Date: 18 January 2026
+- Venue: Novotel HICC, Hyderabad
+- Package: Engagement Special
+
+SERVICES:
+Professional engagement ceremony photography including:
+• Full event coverage
+• Professional editing
+• High-resolution digital images
+• Online gallery
+• Same day edit video
+
+TOTAL FEE: ₹85,000`,
+    terms: `TERMS:
+1. Full payment received
+2. Images delivered within 2-3 weeks
+3. Photographer retains image copyright
+4. Client receives personal use license`,
+    status: 'signed',
+    sentAt: new Date('2025-12-21'),
+    signedAt: new Date('2025-12-22'),
+    signatureUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    signerName: 'Pooja Sharma',
+    createdAt: new Date('2025-12-20'),
+    updatedAt: new Date('2025-12-22'),
+  },
+  {
+    id: 'contract-3',
+    contractNumber: 'VV-CON-2026-003',
+    bookingId: 'booking-3',
+    clientId: 'client-5',
+    clientName: 'Ravi Krishnan',
+    clientEmail: 'ravi.k@company.org',
+    templateId: 'template-3',
+    eventType: 'corporate',
+    eventDate: new Date('2026-01-30'),
+    venue: 'Tech Park Convention Center',
+    packageName: 'Corporate Event Coverage',
+    totalAmount: 75000,
+    content: `CORPORATE EVENT PHOTOGRAPHY AGREEMENT
+
+Agreement between Varnika Visuals & SD Event Avenue ("Photographer") and Ravi Krishnan ("Client").
+
+EVENT DETAILS:
+- Date: 30 January 2026
+- Location: Tech Park Convention Center
+- Package: Corporate Event Coverage
+
+SCOPE OF WORK:
+• Professional event photography
+• Stage and presentation coverage
+• Networking moments capture
+• Full day coverage
+
+TOTAL FEE: ₹75,000`,
+    terms: `TERMS:
+1. 50% advance received
+2. Balance due before event
+3. Commercial usage rights included
+4. Images delivered within 1 week`,
+    status: 'sent',
+    sentAt: new Date('2025-12-26'),
+    expiresAt: new Date('2026-01-10'),
+    createdAt: new Date('2025-12-25'),
+    updatedAt: new Date('2025-12-26'),
+  },
+  {
+    id: 'contract-4',
+    contractNumber: 'VV-CON-2026-004',
+    bookingId: 'booking-5',
+    clientId: 'client-6',
+    clientName: 'Lakshmi Devi',
+    templateId: 'template-4',
+    eventType: 'birthday',
+    eventDate: new Date('2026-02-14'),
+    venue: 'Function Hall, Secunderabad',
+    packageName: 'Birthday Celebration',
+    totalAmount: 30000,
+    content: `CELEBRATION PHOTOGRAPHY AGREEMENT
+
+Between Varnika Visuals & SD Event Avenue and Lakshmi Devi.
+
+EVENT: 60th Birthday Celebration
+DATE: 14 February 2026
+VENUE: Function Hall, Secunderabad
+PACKAGE: Birthday Celebration
+
+SERVICES:
+• Professional photography coverage
+• Candid and posed shots
+• Traditional theme coverage
+• Edited digital images
+
+TOTAL: ₹30,000`,
+    terms: `TERMS:
+1. 50% advance required
+2. Balance due on event day
+3. Images delivered within 2 weeks`,
+    status: 'draft',
+    createdAt: new Date('2026-01-03'),
+    updatedAt: new Date('2026-01-03'),
   },
 ];
 

@@ -13,6 +13,13 @@ import Dashboard from '@/pages/Dashboard';
 import Reports from '@/pages/Reports';
 import Leads from '@/pages/Leads';
 import Clients from '@/pages/Clients';
+import Bookings from '@/pages/Bookings';
+import Contracts from '@/pages/Contracts';
+import ContractSign from '@/pages/ContractSign';
+import Invoices from '@/pages/Invoices';
+import Tasks from '@/pages/Tasks';
+import Settings from '@/pages/Settings';
+import PassportPhoto from '@/pages/PassportPhoto';
 import NotFound from '@/pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -79,10 +86,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-display font-semibold mb-2">Bookings & Calendar</h2>
-                        <p className="text-muted-foreground">Coming in Phase 4</p>
-                      </div>
+                      <Bookings />
                     </AppLayout>
                   </ProtectedRoute>
                 }
@@ -93,24 +97,21 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-display font-semibold mb-2">Contracts & E-Sign</h2>
-                        <p className="text-muted-foreground">Coming in Phase 5</p>
-                      </div>
+                      <Contracts />
                     </AppLayout>
                   </ProtectedRoute>
                 }
               />
+              
+              {/* Public Contract Signing Route */}
+              <Route path="/sign/:contractId" element={<ContractSign />} />
               
               <Route
                 path="/invoices"
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-display font-semibold mb-2">Invoices & Payments</h2>
-                        <p className="text-muted-foreground">Coming in Phase 6</p>
-                      </div>
+                      <Invoices />
                     </AppLayout>
                   </ProtectedRoute>
                 }
@@ -121,10 +122,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-display font-semibold mb-2">Task Management</h2>
-                        <p className="text-muted-foreground">Coming in Phase 7</p>
-                      </div>
+                      <Tasks />
                     </AppLayout>
                   </ProtectedRoute>
                 }
@@ -135,10 +133,18 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <div className="text-center py-20">
-                        <h2 className="text-2xl font-display font-semibold mb-2">Settings</h2>
-                        <p className="text-muted-foreground">Team management, integrations & more</p>
-                      </div>
+                      <Settings />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/passport-photo"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <PassportPhoto />
                     </AppLayout>
                   </ProtectedRoute>
                 }

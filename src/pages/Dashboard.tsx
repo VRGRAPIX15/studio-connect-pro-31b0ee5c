@@ -1,157 +1,110 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Users,
-  Calendar,
-  IndianRupee,
-  TrendingUp,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Plus,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useLeads } from '@/hooks/useLeads';
+import { useClients } from '@/hooks/useClients';
+import { useBookings } from '@/hooks/useBookings';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useAuth } from '@/hooks/useAuth';
-import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Calendar, 
+  Users, 
+  TrendingUp, 
+  IndianRupee, 
+  Plus,
+  ArrowUpRight,
+  Clock,
+  UserPlus,
+  FileText,
+  Loader2
+} from 'lucide-react';
+import { format, isToday, isTomorrow, isThisWeek } from 'date-fns';
 
-// Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
+    transition: { staggerChildren: 0.1 }
+  }
 };
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
-// Demo data
-const stats = [
-  {
-    title: 'New Leads',
-    value: '24',
-    change: '+12%',
-    trend: 'up',
-    icon: Users,
-    color: 'text-info',
-    bgColor: 'bg-info/10',
-  },
-  {
-    title: 'Upcoming Bookings',
-    value: '8',
-    change: '+3',
-    trend: 'up',
-    icon: Calendar,
-    color: 'text-primary',
-    bgColor: 'bg-primary/10',
-  },
-  {
-    title: 'This Month Revenue',
-    value: '₹2,45,000',
-    change: '+18%',
-    trend: 'up',
-    icon: IndianRupee,
-    color: 'text-success',
-    bgColor: 'bg-success/10',
-  },
-  {
-    title: 'Pending Payments',
-    value: '₹85,000',
-    change: '5 invoices',
-    trend: 'neutral',
-    icon: AlertCircle,
-    color: 'text-warning',
-    bgColor: 'bg-warning/10',
-  },
-];
-
-const upcomingEvents = [
-  {
-    id: '1',
-    clientName: 'Priya & Rahul',
-    eventType: 'Wedding',
-    date: 'Jan 8, 2026',
-    time: '10:00 AM',
-    venue: 'Grand Palace, Chennai',
-    status: 'confirmed',
-  },
-  {
-    id: '2',
-    clientName: 'Sneha Sharma',
-    eventType: 'Baby Shower',
-    date: 'Jan 10, 2026',
-    time: '4:00 PM',
-    venue: 'Varnika Studio',
-    status: 'confirmed',
-  },
-  {
-    id: '3',
-    clientName: 'Arun Kumar',
-    eventType: 'Birthday',
-    date: 'Jan 12, 2026',
-    time: '6:00 PM',
-    venue: 'Client Residence',
-    status: 'in_progress',
-  },
-];
-
-const recentLeads = [
-  {
-    id: '1',
-    name: 'Kavitha Rajan',
-    phone: '+91 98765 43210',
-    source: 'Instagram',
-    eventType: 'Wedding',
-    status: 'new',
-    createdAt: '2 hours ago',
-  },
-  {
-    id: '2',
-    name: 'Mohammed Ali',
-    phone: '+91 98765 43211',
-    source: 'WhatsApp',
-    eventType: 'Engagement',
-    status: 'contacted',
-    createdAt: '5 hours ago',
-  },
-  {
-    id: '3',
-    name: 'Divya Krishnan',
-    phone: '+91 98765 43212',
-    source: 'Website',
-    eventType: 'Baby Shower',
-    status: 'quoted',
-    createdAt: '1 day ago',
-  },
-];
-
-const statusColors: Record<string, string> = {
-  new: 'status-new',
-  contacted: 'status-contacted',
-  quoted: 'status-quoted',
-  converted: 'status-converted',
-  confirmed: 'bg-success/10 text-success border-success/20',
-  in_progress: 'bg-info/10 text-info border-info/20',
+  visible: { opacity: 1, y: 0 }
 };
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { leads, isLoading: leadsLoading } = useLeads();
+  const { clients, isLoading: clientsLoading } = useClients();
+  const { bookings, isLoading: bookingsLoading, stats: bookingStats } = useBookings();
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+  const isLoading = leadsLoading || clientsLoading || bookingsLoading;
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    const todayBookings = bookings.filter(b => 
+      isToday(new Date(b.eventDate)) && b.status === 'confirmed'
+    ).length;
+
+    const newLeadsThisWeek = leads.filter(l => 
+      isThisWeek(new Date(l.createdAt)) && l.status === 'new'
+    ).length;
+
+    return { 
+      todayBookings, 
+      newLeadsThisWeek, 
+      pendingPayments: bookingStats.pendingPayments,
+      monthlyRevenue: bookingStats.totalRevenue
+    };
+  }, [leads, bookings, bookingStats]);
+
+  // Upcoming events
+  const upcomingEvents = useMemo(() => {
+    return bookings
+      .filter(b => b.status === 'confirmed' && new Date(b.eventDate) >= new Date())
+      .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())
+      .slice(0, 5);
+  }, [bookings]);
+
+  // Recent leads
+  const recentLeads = useMemo(() => {
+    return [...leads]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
+  }, [leads]);
+
+  const getEventDateLabel = (date: Date) => {
+    if (isToday(date)) return 'Today';
+    if (isTomorrow(date)) return 'Tomorrow';
+    return format(date, 'MMM d');
   };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      new: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+      contacted: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+      quoted: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+      converted: 'bg-green-500/10 text-green-500 border-green-500/20',
+      lost: 'bg-red-500/10 text-red-500 border-red-500/20',
+    };
+    return colors[status] || 'bg-muted text-muted-foreground';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">Loading dashboard...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -163,149 +116,199 @@ export default function Dashboard() {
       {/* Header */}
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-semibold text-foreground">
-            {getGreeting()}, {user?.name?.split(' ')[0]}!
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-foreground">
+            Welcome back, {user?.name?.split(' ')[0] || 'User'}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Here's what's happening at the studio today
+            {format(new Date(), 'EEEE, MMMM d, yyyy')}
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button className="bg-gold-gradient hover:opacity-90 text-white shadow-gold">
-            <Plus className="h-4 w-4 mr-2" />
-            New Lead
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => navigate('/leads')}>
+            <UserPlus className="h-4 w-4" />
+            <span className="hidden sm:inline">Add Lead</span>
+          </Button>
+          <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => navigate('/bookings')}>
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">New Booking</span>
           </Button>
         </div>
       </motion.div>
 
       {/* Stats Grid */}
-      <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            variants={itemVariants}
-            whileHover={{ y: -2 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Card className="card-hover border-border/50">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className={cn('p-2.5 rounded-xl', stat.bgColor)}>
-                    <stat.icon className={cn('h-5 w-5', stat.color)} />
-                  </div>
-                  {stat.trend !== 'neutral' && (
-                    <div className={cn(
-                      'flex items-center gap-1 text-xs font-medium',
-                      stat.trend === 'up' ? 'text-success' : 'text-destructive'
-                    )}>
-                      {stat.trend === 'up' ? (
-                        <ArrowUpRight className="h-3 w-3" />
-                      ) : (
-                        <ArrowDownRight className="h-3 w-3" />
-                      )}
-                      {stat.change}
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">{stat.title}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-card border-border/50 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Calendar className="h-5 w-5 text-blue-500" />
+              </div>
+              <Badge variant="outline" className="text-green-500 border-green-500/30 bg-green-500/10 text-xs">
+                <ArrowUpRight className="h-3 w-3 mr-1" />
+                Live
+              </Badge>
+            </div>
+            <div className="mt-3">
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">{stats.todayBookings}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Today's Bookings</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border/50 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Users className="h-5 w-5 text-purple-500" />
+              </div>
+              <Badge variant="outline" className="text-muted-foreground border-border text-xs">
+                {leads.length} total
+              </Badge>
+            </div>
+            <div className="mt-3">
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">{stats.newLeadsThisWeek}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">New Leads This Week</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border/50 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="p-2 rounded-lg bg-orange-500/10">
+                <IndianRupee className="h-5 w-5 text-orange-500" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                ₹{(stats.pendingPayments / 1000).toFixed(0)}K
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Pending Payments</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border/50 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <TrendingUp className="h-5 w-5 text-green-500" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                ₹{(stats.monthlyRevenue / 100000).toFixed(1)}L
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Total Revenue</p>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Content Grid */}
+      <div className="grid lg:grid-cols-2 gap-6">
         {/* Upcoming Events */}
         <motion.div variants={itemVariants}>
-          <Card className="border-border/50">
+          <Card className="bg-card border-border/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-display">Upcoming Events</CardTitle>
-                  <CardDescription>Next 7 days</CardDescription>
-                </div>
-                <Button variant="ghost" size="sm" className="text-primary">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  Upcoming Events
+                </CardTitle>
+                <Button variant="ghost" size="sm" className="text-primary" onClick={() => navigate('/bookings')}>
                   View All
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {upcomingEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-start gap-4 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-shrink-0 w-12 text-center">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      {event.date.split(' ')[0]}
+            <CardContent className="space-y-3">
+              {upcomingEvents.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No upcoming events</p>
+              ) : (
+                upcomingEvents.map((event, idx) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
+                        <span className="text-xs text-primary font-medium">
+                          {format(new Date(event.eventDate), 'MMM')}
+                        </span>
+                        <span className="text-lg font-bold text-primary">
+                          {format(new Date(event.eventDate), 'd')}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{event.clientName}</p>
+                        <p className="text-sm text-muted-foreground">{event.eventType}</p>
+                      </div>
                     </div>
-                    <div className="text-lg font-semibold text-foreground">
-                      {event.date.split(' ')[1].replace(',', '')}
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-foreground truncate">{event.clientName}</p>
-                      <Badge variant="outline" className={cn('text-xs', statusColors[event.status])}>
-                        {event.status === 'confirmed' ? 'Confirmed' : 'In Progress'}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{event.eventType}</p>
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {event.time}
-                      </span>
-                      <span className="truncate">{event.venue}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                    <Badge 
+                      variant="outline" 
+                      className={isToday(new Date(event.eventDate)) 
+                        ? 'bg-primary/10 text-primary border-primary/30' 
+                        : 'bg-muted text-muted-foreground'
+                      }
+                    >
+                      {getEventDateLabel(new Date(event.eventDate))}
+                    </Badge>
+                  </motion.div>
+                ))
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
         {/* Recent Leads */}
         <motion.div variants={itemVariants}>
-          <Card className="border-border/50">
+          <Card className="bg-card border-border/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-display">Recent Leads</CardTitle>
-                  <CardDescription>New enquiries</CardDescription>
-                </div>
-                <Button variant="ghost" size="sm" className="text-primary">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Recent Leads
+                </CardTitle>
+                <Button variant="ghost" size="sm" className="text-primary" onClick={() => navigate('/leads')}>
                   View All
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {recentLeads.map((lead) => (
-                <div
-                  key={lead.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                >
-                  <Avatar className="h-10 w-10 border border-border">
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                      {lead.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <p className="font-medium text-foreground truncate">{lead.name}</p>
-                      <Badge variant="outline" className={cn('text-xs', statusColors[lead.status])}>
-                        {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                      </Badge>
+            <CardContent className="space-y-3">
+              {recentLeads.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No leads yet</p>
+              ) : (
+                recentLeads.map((lead, idx) => (
+                  <motion.div
+                    key={lead.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-sm font-medium text-primary">
+                          {lead.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{lead.name}</p>
+                        <p className="text-sm text-muted-foreground">{lead.eventType || 'General Inquiry'}</p>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{lead.eventType} • {lead.source}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{lead.createdAt}</p>
-                  </div>
-                </div>
-              ))}
+                    <Badge 
+                      variant="outline" 
+                      className={getStatusColor(lead.status)}
+                    >
+                      {lead.status}
+                    </Badge>
+                  </motion.div>
+                ))
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -313,25 +316,44 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <motion.div variants={itemVariants}>
-        <Card className="border-border/50 bg-gradient-to-br from-primary/5 to-accent/30">
-          <CardContent className="p-6">
-            <h3 className="font-display font-semibold text-foreground mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { label: 'Add Lead', icon: Users },
-                { label: 'New Booking', icon: Calendar },
-                { label: 'Create Invoice', icon: TrendingUp },
-                { label: 'Generate Contract', icon: CheckCircle2 },
-              ].map((action) => (
-                <Button
-                  key={action.label}
-                  variant="outline"
-                  className="h-auto py-4 flex-col gap-2 bg-background/80 hover:bg-background border-border/50"
-                >
-                  <action.icon className="h-5 w-5 text-primary" />
-                  <span className="text-sm">{action.label}</span>
-                </Button>
-              ))}
+        <Card className="bg-card border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-display">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Button 
+                variant="outline" 
+                className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/50"
+                onClick={() => navigate('/leads')}
+              >
+                <UserPlus className="h-5 w-5 text-primary" />
+                <span className="text-sm">Add Lead</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/50"
+                onClick={() => navigate('/bookings')}
+              >
+                <Calendar className="h-5 w-5 text-primary" />
+                <span className="text-sm">New Booking</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/50"
+                onClick={() => navigate('/invoices')}
+              >
+                <FileText className="h-5 w-5 text-primary" />
+                <span className="text-sm">Create Invoice</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/50"
+                onClick={() => navigate('/clients')}
+              >
+                <Users className="h-5 w-5 text-primary" />
+                <span className="text-sm">View Clients</span>
+              </Button>
             </div>
           </CardContent>
         </Card>
