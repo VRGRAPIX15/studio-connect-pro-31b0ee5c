@@ -1,6 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Contract, ContractStatus } from '@/types';
-import { demoContracts } from '@/data/demoData';
+import { API_CONFIG } from '@/config/api';
+import { toast } from 'sonner';
 
 export interface ContractFilters {
   status?: ContractStatus;
@@ -17,8 +18,56 @@ export interface ContractStats {
 }
 
 export function useContracts() {
-  const [contracts, setContracts] = useState<Contract[]>(demoContracts);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<ContractFilters>({});
+
+  // Fetch contracts from API
+  const fetchContracts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${API_CONFIG.GOOGLE_SCRIPT_URL}?action=getContracts`);
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        const contractsWithDates = data.map((c: any) => ({
+          id: c.Id,
+          contractNumber: c.ContractNumber,
+          bookingId: c.BookingId || undefined,
+          clientId: c.ClientId,
+          clientName: c.ClientName,
+          clientEmail: c.ClientEmail,
+          templateId: c.TemplateId,
+          eventType: c.EventType,
+          eventDate: c.EventDate ? new Date(c.EventDate) : undefined,
+          venue: c.Venue,
+          packageName: c.PackageName,
+          totalAmount: Number(c.TotalAmount) || 0,
+          content: c.Content,
+          terms: c.Terms,
+          status: c.Status as ContractStatus,
+          sentAt: c.SentAt ? new Date(c.SentAt) : undefined,
+          signedAt: c.SignedAt ? new Date(c.SignedAt) : undefined,
+          expiresAt: c.ExpiresAt ? new Date(c.ExpiresAt) : undefined,
+          signatureUrl: c.SignatureUrl,
+          signerName: c.SignerName,
+          signerIp: c.SignerIp,
+          createdAt: new Date(c.CreatedAt),
+          updatedAt: new Date(c.UpdatedAt),
+        }));
+        setContracts(contractsWithDates);
+      }
+    } catch (error) {
+      console.error('Error fetching contracts:', error);
+      // Don't show error toast on initial load - API might not be configured
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchContracts();
+  }, [fetchContracts]);
 
   const stats = useMemo((): ContractStats => ({
     total: contracts.length,
@@ -100,6 +149,7 @@ export function useContracts() {
   return {
     contracts: filteredContracts,
     allContracts: contracts,
+    isLoading,
     stats,
     filters,
     setFilters,
@@ -110,5 +160,6 @@ export function useContracts() {
     signContract,
     cancelContract,
     deleteContract,
+    refetch: fetchContracts,
   };
 }

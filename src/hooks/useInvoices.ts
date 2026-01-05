@@ -16,24 +16,31 @@ export function useInvoices() {
       const data = await response.json();
       
       if (Array.isArray(data)) {
-        const invoicesWithDates = data.map((inv: any) => ({
-          id: inv.Id,
-          invoiceNumber: inv.InvoiceNumber,
-          bookingId: inv.BookingId || undefined,
-          clientId: inv.ClientId,
-          clientName: inv.ClientName,
-          items: inv.Items ? JSON.parse(inv.Items) : [],
-          subtotal: Number(inv.Subtotal) || 0,
-          taxAmount: Number(inv.TaxAmount) || 0,
-          discount: Number(inv.Discount) || 0,
-          totalAmount: Number(inv.TotalAmount) || 0,
-          paidAmount: Number(inv.PaidAmount) || 0,
-          balanceDue: Number(inv.BalanceDue) || 0,
-          status: inv.Status as PaymentStatus,
-          dueDate: new Date(inv.DueDate),
-          createdAt: new Date(inv.CreatedAt),
-          payments: [], // Will fetch separately if needed
-        }));
+        const invoicesWithDates = data.map((inv: any) => {
+          const totalAmount = Number(inv.TotalAmount) || 0;
+          const paidAmount = Number(inv.PaidAmount) || 0;
+          // Calculate balance due on frontend to ensure correctness
+          const calculatedBalance = totalAmount - paidAmount;
+          
+          return {
+            id: inv.Id,
+            invoiceNumber: inv.InvoiceNumber,
+            bookingId: inv.BookingId || undefined,
+            clientId: inv.ClientId,
+            clientName: inv.ClientName,
+            items: inv.Items ? JSON.parse(inv.Items) : [],
+            subtotal: Number(inv.Subtotal) || 0,
+            taxAmount: Number(inv.TaxAmount) || 0,
+            discount: Number(inv.Discount) || 0,
+            totalAmount,
+            paidAmount,
+            balanceDue: calculatedBalance > 0 ? calculatedBalance : 0,
+            status: inv.Status as PaymentStatus,
+            dueDate: new Date(inv.DueDate),
+            createdAt: new Date(inv.CreatedAt),
+            payments: [], // Will fetch separately if needed
+          };
+        });
         setInvoices(invoicesWithDates);
       }
     } catch (error) {

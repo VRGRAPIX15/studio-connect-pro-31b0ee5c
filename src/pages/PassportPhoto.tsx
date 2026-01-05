@@ -695,15 +695,20 @@ export default function PassportPhoto() {
                   <TabsContent value="adjust" className="mt-0">
                     <div className="space-y-6">
                       <div className="grid md:grid-cols-2 gap-6">
-                        {/* Original */}
+                        {/* Original with live adjustments preview */}
                         <div className="space-y-2">
-                          <Label className="text-sm text-muted-foreground">Original</Label>
+                          <Label className="text-sm text-muted-foreground">Original (with adjustments)</Label>
                           <div className="relative aspect-[3/4] bg-muted rounded-xl overflow-hidden">
                             {sourceImage && (
                               <img
                                 src={sourceImage}
                                 alt="Original"
                                 className="w-full h-full object-contain"
+                                style={{
+                                  filter: `brightness(${adjustments.brightness}%) contrast(${adjustments.contrast}%) saturate(${adjustments.saturation}%)`,
+                                  transform: `rotate(${adjustments.rotation}deg) scale(${adjustments.scale}) translate(${adjustments.offsetX}px, ${adjustments.offsetY}px)`,
+                                  transition: 'filter 0.1s, transform 0.1s'
+                                }}
                               />
                             )}
                           </div>
@@ -727,9 +732,13 @@ export default function PassportPhoto() {
                                   aspectRatio: `${selectedSize.widthMM}/${selectedSize.heightMM}`
                                 }}
                               />
+                            ) : sourceImage ? (
+                              <div className="text-center text-muted-foreground">
+                                <p>Click "Apply Adjustments" to generate cropped preview</p>
+                              </div>
                             ) : (
                               <div className="text-center text-muted-foreground">
-                                <p>Click "Apply Adjustments" to preview</p>
+                                <p>Upload a photo first</p>
                               </div>
                             )}
                           </div>
