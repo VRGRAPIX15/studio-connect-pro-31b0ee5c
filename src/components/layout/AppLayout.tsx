@@ -16,6 +16,7 @@ import {
   UserCircle,
   Bell,
   Search,
+  Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
   { title: 'Contracts', href: '/contracts', icon: FileText },
   { title: 'Invoices', href: '/invoices', icon: Receipt },
   { title: 'Tasks', href: '/tasks', icon: ClipboardList, badge: 8 },
+  { title: 'Passport Photo', href: '/passport-photo', icon: Camera },
   { title: 'Settings', href: '/settings', icon: Settings },
 ];
 
