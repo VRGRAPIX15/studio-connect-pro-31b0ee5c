@@ -97,54 +97,130 @@ export function useContracts() {
     return contracts.find(c => c.id === id);
   }, [contracts]);
 
-  const createContract = useCallback((contract: Omit<Contract, 'id' | 'contractNumber' | 'createdAt' | 'updatedAt'>) => {
-    const newContract: Contract = {
-      ...contract,
-      id: `contract-${Date.now()}`,
-      contractNumber: `VV-CON-${new Date().getFullYear()}-${String(contracts.length + 1).padStart(3, '0')}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setContracts(prev => [newContract, ...prev]);
-    return newContract;
-  }, [contracts.length]);
+  const createContract = useCallback(async (contract: Omit<Contract, 'id' | 'contractNumber' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const response = await fetch(API_CONFIG.GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'addContract',
+          contract: {
+            BookingId: contract.bookingId,
+            ClientId: contract.clientId,
+            ClientName: contract.clientName,
+            ClientEmail: contract.clientEmail,
+            TemplateId: contract.templateId,
+            EventType: contract.eventType,
+            EventDate: contract.eventDate?.toISOString(),
+            Venue: contract.venue,
+            PackageName: contract.packageName,
+            TotalAmount: contract.totalAmount,
+            Content: contract.content,
+            Terms: contract.terms,
+            Status: contract.status,
+          },
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Contract created successfully');
+        fetchContracts();
+        return result.contract;
+      } else {
+        toast.error(result.error || 'Failed to create contract');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error adding contract:', error);
+      toast.error('Failed to create contract');
+      return null;
+    }
+  }, [fetchContracts]);
 
-  const updateContract = useCallback((id: string, updates: Partial<Contract>) => {
-    setContracts(prev => prev.map(contract =>
-      contract.id === id
-        ? { ...contract, ...updates, updatedAt: new Date() }
-        : contract
-    ));
-  }, []);
+  const updateContract = useCallback(async (id: string, updates: Partial<Contract>) => {
+    try {
+      const response = await fetch(API_CONFIG.GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'updateContract',
+          id,
+          contract: {
+            Status: updates.status,
+            SentAt: updates.sentAt?.toISOString(),
+            SignedAt: updates.signedAt?.toISOString(),
+            ExpiresAt: updates.expiresAt?.toISOString(),
+            SignatureUrl: updates.signatureUrl,
+            SignerName: updates.signerName,
+            SignerIp: updates.signerIp,
+          },
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        fetchContracts();
+      } else {
+        toast.error(result.error || 'Failed to update contract');
+      }
+    } catch (error) {
+      console.error('Error updating contract:', error);
+      toast.error('Failed to update contract');
+    }
+  }, [fetchContracts]);
 
-  const sendContract = useCallback((id: string) => {
+  const sendContract = useCallback(async (id: string) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
     
-    updateContract(id, {
+    await updateContract(id, {
       status: 'sent',
       sentAt: new Date(),
       expiresAt,
     });
+    toast.success('Contract sent for signature');
   }, [updateContract]);
 
-  const signContract = useCallback((id: string, signatureUrl: string, signerName: string, signerIp?: string) => {
-    updateContract(id, {
+  const signContract = useCallback(async (id: string, signatureUrl: string, signerName: string, signerIp?: string) => {
+    await updateContract(id, {
       status: 'signed',
       signedAt: new Date(),
       signatureUrl,
       signerName,
       signerIp,
     });
+    toast.success('Contract signed successfully');
   }, [updateContract]);
 
-  const cancelContract = useCallback((id: string) => {
-    updateContract(id, { status: 'cancelled' });
+  const cancelContract = useCallback(async (id: string) => {
+    await updateContract(id, { status: 'cancelled' });
+    toast.success('Contract cancelled');
   }, [updateContract]);
 
-  const deleteContract = useCallback((id: string) => {
-    setContracts(prev => prev.filter(contract => contract.id !== id));
-  }, []);
+  const deleteContract = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(API_CONFIG.GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'deleteContract', id }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Contract deleted');
+        fetchContracts();
+      } else {
+        toast.error(result.error || 'Failed to delete contract');
+      }
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      toast.error('Failed to delete contract');
+    }
+  }, [fetchContracts]);
 
   return {
     contracts: filteredContracts,

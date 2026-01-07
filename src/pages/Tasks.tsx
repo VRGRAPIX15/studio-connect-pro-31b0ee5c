@@ -24,7 +24,6 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTasks } from '@/hooks/useTasks';
-import { teamMembers } from '@/data/demoData';
 import TaskBoard from '@/components/tasks/TaskBoard';
 import TaskTable from '@/components/tasks/TaskTable';
 import TaskDetailSheet from '@/components/tasks/TaskDetailSheet';
@@ -38,6 +37,7 @@ export default function Tasks() {
     tasksByStatus,
     stats,
     workloadByTeam,
+    teamMembers,
     searchTerm,
     setSearchTerm,
     statusFilter,
