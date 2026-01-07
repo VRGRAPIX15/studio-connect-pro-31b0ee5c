@@ -1,4 +1,5 @@
-// Passport Photo Types
+// Passport Photo Types - Re-export from country templates
+import { COUNTRY_TEMPLATES, CountryTemplate } from '@/data/countryTemplates';
 
 export interface PhotoSize {
   id: string;
@@ -30,163 +31,24 @@ export interface PrintLayout {
   paperHeightInch: number;
   marginMM: number;
   gapMM: number;
-  // Auto-calculated based on photo size
   autoFit: boolean;
 }
 
-// Standard passport photo sizes (all at 300 DPI for print quality)
-export const PHOTO_SIZES: PhotoSize[] = [
-  {
-    id: 'india_passport',
-    name: 'Indian Passport',
-    country: 'India',
-    widthMM: 35,
-    heightMM: 45,
-    widthPx: 413,
-    heightPx: 531,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-    notes: '80% face coverage, white background'
-  },
-  {
-    id: 'india_visa',
-    name: 'Indian Visa',
-    country: 'India',
-    widthMM: 51,
-    heightMM: 51,
-    widthPx: 602,
-    heightPx: 602,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-    notes: 'Square format, white background'
-  },
-  {
-    id: 'india_aadhaar',
-    name: 'Aadhaar Card',
-    country: 'India',
-    widthMM: 35,
-    heightMM: 45,
-    widthPx: 413,
-    heightPx: 531,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-  },
-  {
-    id: 'india_pan',
-    name: 'PAN Card',
-    country: 'India',
-    widthMM: 25,
-    heightMM: 35,
-    widthPx: 295,
-    heightPx: 413,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-  },
-  {
-    id: 'us_passport',
-    name: 'US Passport',
-    country: 'USA',
-    widthMM: 51,
-    heightMM: 51,
-    widthPx: 600,
-    heightPx: 600,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-    notes: '2x2 inches, white/off-white background'
-  },
-  {
-    id: 'us_visa',
-    name: 'US Visa',
-    country: 'USA',
-    widthMM: 51,
-    heightMM: 51,
-    widthPx: 600,
-    heightPx: 600,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-  },
-  {
-    id: 'uk_passport',
-    name: 'UK Passport',
-    country: 'UK',
-    widthMM: 35,
-    heightMM: 45,
-    widthPx: 413,
-    heightPx: 531,
-    dpi: 300,
-    bgColor: '#F5F5F5',
-    notes: 'Light grey or cream background'
-  },
-  {
-    id: 'schengen_visa',
-    name: 'Schengen Visa',
-    country: 'Europe',
-    widthMM: 35,
-    heightMM: 45,
-    widthPx: 413,
-    heightPx: 531,
-    dpi: 300,
-    bgColor: '#E8E8E8',
-    notes: 'Light grey background'
-  },
-  {
-    id: 'canada_passport',
-    name: 'Canada Passport',
-    country: 'Canada',
-    widthMM: 50,
-    heightMM: 70,
-    widthPx: 590,
-    heightPx: 826,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-  },
-  {
-    id: 'australia_passport',
-    name: 'Australia Passport',
-    country: 'Australia',
-    widthMM: 35,
-    heightMM: 45,
-    widthPx: 413,
-    heightPx: 531,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-  },
-  {
-    id: 'japan_passport',
-    name: 'Japan Passport',
-    country: 'Japan',
-    widthMM: 35,
-    heightMM: 45,
-    widthPx: 413,
-    heightPx: 531,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-  },
-  {
-    id: 'china_visa',
-    name: 'China Visa',
-    country: 'China',
-    widthMM: 33,
-    heightMM: 48,
-    widthPx: 390,
-    heightPx: 567,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-  },
-  {
-    id: 'stamp_size',
-    name: 'Stamp Size',
-    country: 'India',
-    widthMM: 20,
-    heightMM: 25,
-    widthPx: 236,
-    heightPx: 295,
-    dpi: 300,
-    bgColor: '#FFFFFF',
-  },
-];
+// Convert country templates to photo sizes
+export const PHOTO_SIZES: PhotoSize[] = COUNTRY_TEMPLATES.map(t => ({
+  id: t.id,
+  name: t.name,
+  country: t.country,
+  widthMM: t.widthMM,
+  heightMM: t.heightMM,
+  widthPx: t.widthPx,
+  heightPx: t.heightPx,
+  dpi: t.dpi,
+  bgColor: t.bgColor,
+  notes: t.notes,
+}));
 
-// Print layout for 4x6 inch paper only - auto-fit with rotation
+// Print layouts
 export const PRINT_LAYOUTS: PrintLayout[] = [
   {
     id: '4x6_auto',
@@ -195,6 +57,15 @@ export const PRINT_LAYOUTS: PrintLayout[] = [
     paperHeightInch: 6,
     marginMM: 3,
     gapMM: 2,
+    autoFit: true,
+  },
+  {
+    id: 'a4_auto',
+    name: 'A4 Paper (Auto-fit)',
+    paperWidthInch: 8.27,
+    paperHeightInch: 11.69,
+    marginMM: 5,
+    gapMM: 3,
     autoFit: true,
   },
 ];
@@ -214,7 +85,6 @@ export function calculateOptimalLayout(
   photoSize: PhotoSize,
   layout: PrintLayout
 ): { columns: number; rows: number; rotated: boolean; photoCount: number } {
-  const DPI = 300;
   const paperWidthMM = layout.paperWidthInch * 25.4;
   const paperHeightMM = layout.paperHeightInch * 25.4;
   
@@ -238,3 +108,7 @@ export function calculateOptimalLayout(
   
   return { columns: normalCols, rows: normalRows, rotated: false, photoCount: normalCount };
 }
+
+// Re-export for convenience
+export { COUNTRY_TEMPLATES, type CountryTemplate } from '@/data/countryTemplates';
+export { BACKGROUND_COLORS, getPopularTemplates, searchTemplates, getTemplatesByCountry } from '@/data/countryTemplates';
