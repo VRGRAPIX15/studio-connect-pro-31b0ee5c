@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLeads } from '@/hooks/useLeads';
 import { useClients } from '@/hooks/useClients';
 import { useBookings } from '@/hooks/useBookings';
+import { useInvoices } from '@/hooks/useInvoices';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,8 +43,9 @@ export default function Dashboard() {
   const { leads, isLoading: leadsLoading } = useLeads();
   const { clients, isLoading: clientsLoading } = useClients();
   const { bookings, isLoading: bookingsLoading, stats: bookingStats } = useBookings();
+  const { stats: invoiceStats, isLoading: invoicesLoading } = useInvoices();
 
-  const isLoading = leadsLoading || clientsLoading || bookingsLoading;
+  const isLoading = leadsLoading || clientsLoading || bookingsLoading || invoicesLoading;
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -58,10 +60,10 @@ export default function Dashboard() {
     return { 
       todayBookings, 
       newLeadsThisWeek, 
-      pendingPayments: bookingStats.pendingPayments,
-      monthlyRevenue: bookingStats.totalRevenue
+      pendingPayments: invoiceStats.pending || bookingStats.pendingPayments,
+      monthlyRevenue: invoiceStats.total || bookingStats.totalRevenue
     };
-  }, [leads, bookings, bookingStats]);
+  }, [leads, bookings, bookingStats, invoiceStats]);
 
   // Upcoming events
   const upcomingEvents = useMemo(() => {
