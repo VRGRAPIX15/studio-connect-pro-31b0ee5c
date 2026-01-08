@@ -29,7 +29,12 @@ const SHEETS = {
   USERS: 'Users',
   ACTIVITY_LOG: 'ActivityLog',
   PAYMENTS: 'Payments',
-  SETTINGS: 'Settings'
+  SETTINGS: 'Settings',
+  // Passport Photo Module
+  PASSPORT_CUSTOMERS: 'PassportCustomers',
+  PASSPORT_ORDERS: 'PassportOrders',
+  PASSPORT_PRICES: 'PassportPrices',
+  PASSPORT_SETTINGS: 'PassportSettings'
 };
 
 // ==================== INITIAL SETUP ====================
@@ -848,3 +853,149 @@ function uploadFileToDrive(fileName, base64Data, mimeType, folderId) {
     return { success: false, error: error.message };
   }
 }
+
+// ==================== PASSPORT PHOTO MODULE ====================
+
+// Setup passport sheets (run once)
+function setupPassportSheets() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  const passportSheets = {
+    [SHEETS.PASSPORT_CUSTOMERS]: ['Id', 'Name', 'Phone', 'Email', 'Notes', 'TotalOrders', 'TotalSpent', 'CreatedAt', 'UpdatedAt'],
+    [SHEETS.PASSPORT_ORDERS]: ['Id', 'OrderId', 'CustomerId', 'CustomerName', 'Items', 'Subtotal', 'Tax', 'Total', 'Status', 'PaymentStatus', 'PaymentMethod', 'PaymentReference', 'PaidAt', 'Notes', 'CreatedAt', 'UpdatedAt'],
+    [SHEETS.PASSPORT_PRICES]: ['Id', 'TemplateId', 'TemplateName', 'Country', 'PhotoType', 'Price', 'PricePerSheet', 'IsActive'],
+    [SHEETS.PASSPORT_SETTINGS]: ['Key', 'Value', 'UpdatedAt']
+  };
+  
+  for (const [sheetName, headers] of Object.entries(passportSheets)) {
+    let sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+    }
+    sheet.clear();
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+  
+  return { success: true, message: 'Passport sheets created!' };
+}
+
+// Passport Customers
+function getPassportCustomers() { return getSheetData(SHEETS.PASSPORT_CUSTOMERS); }
+
+function addPassportCustomer(customer) {
+  const sheet = getSheet(SHEETS.PASSPORT_CUSTOMERS);
+  const id = generateId('PPC');
+  
+  const newCustomer = {
+    Id: id,
+    Name: customer.name || customer.Name,
+    Phone: customer.phone || customer.Phone,
+    Email: customer.email || customer.Email || '',
+    Notes: customer.notes || customer.Notes || '',
+    TotalOrders: 0,
+    TotalSpent: 0,
+    CreatedAt: new Date().toISOString(),
+    UpdatedAt: new Date().toISOString()
+  };
+  
+  const headers = getHeaders(sheet);
+  sheet.appendRow(objectToRow(headers, newCustomer));
+  
+  return { success: true, id: id, customer: newCustomer };
+}
+
+function updatePassportCustomer(id, updates) { return updateSheetRow(SHEETS.PASSPORT_CUSTOMERS, id, updates); }
+
+// Passport Orders
+function getPassportOrders() { 
+  const orders = getSheetData(SHEETS.PASSPORT_ORDERS);
+  return orders.map(o => ({
+    ...o,
+    items: o.Items ? JSON.parse(o.Items) : []
+  }));
+}
+
+function addPassportOrder(order) {
+  const sheet = getSheet(SHEETS.PASSPORT_ORDERS);
+  const id = generateId('PPO');
+  const orderId = generatePassportOrderId();
+  
+  const newOrder = {
+    Id: id,
+    OrderId: orderId,
+    CustomerId: order.customerId || order.CustomerId,
+    CustomerName: order.customerName || order.CustomerName,
+    Items: JSON.stringify(order.items || order.Items || []),
+    Subtotal: order.subtotal || order.Subtotal || 0,
+    Tax: order.tax || order.Tax || 0,
+    Total: order.total || order.Total || 0,
+    Status: order.status || 'pending',
+    PaymentStatus: order.paymentStatus || 'unpaid',
+    PaymentMethod: order.paymentMethod || '',
+    PaymentReference: order.paymentReference || '',
+    PaidAt: order.paidAt || '',
+    Notes: order.notes || '',
+    CreatedAt: new Date().toISOString(),
+    UpdatedAt: new Date().toISOString()
+  };
+  
+  const headers = getHeaders(sheet);
+  sheet.appendRow(objectToRow(headers, newOrder));
+  
+  // Update customer stats
+  updatePassportCustomerStats(newOrder.CustomerId, newOrder.Total);
+  
+  return { success: true, id: id, orderId: orderId, order: newOrder };
+}
+
+function updatePassportOrder(id, updates) { return updateSheetRow(SHEETS.PASSPORT_ORDERS, id, updates); }
+
+function updatePassportCustomerStats(customerId, amount) {
+  const sheet = getSheet(SHEETS.PASSPORT_CUSTOMERS);
+  const found = findRowById(sheet, customerId);
+  if (found) {
+    const currentOrders = parseInt(found.data.TotalOrders) || 0;
+    const currentSpent = parseFloat(found.data.TotalSpent) || 0;
+    updateSheetRow(SHEETS.PASSPORT_CUSTOMERS, customerId, {
+      TotalOrders: currentOrders + 1,
+      TotalSpent: currentSpent + parseFloat(amount)
+    });
+  }
+}
+
+function generatePassportOrderId() {
+  const date = new Date();
+  const year = date.getFullYear().toString().slice(-2);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `PP${year}${month}${day}-${random}`;
+}
+
+// Passport Prices
+function getPassportPrices() { return getSheetData(SHEETS.PASSPORT_PRICES); }
+
+function addPassportPrice(price) {
+  const sheet = getSheet(SHEETS.PASSPORT_PRICES);
+  const id = generateId('PPP');
+  
+  const newPrice = {
+    Id: id,
+    TemplateId: price.templateId,
+    TemplateName: price.templateName,
+    Country: price.country,
+    PhotoType: price.photoType,
+    Price: price.price || 50,
+    PricePerSheet: price.pricePerSheet || 100,
+    IsActive: true
+  };
+  
+  const headers = getHeaders(sheet);
+  sheet.appendRow(objectToRow(headers, newPrice));
+  
+  return { success: true, id: id, price: newPrice };
+}
+
+function updatePassportPrice(id, updates) { return updateSheetRow(SHEETS.PASSPORT_PRICES, id, updates); }
