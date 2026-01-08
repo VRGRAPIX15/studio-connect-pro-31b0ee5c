@@ -6,6 +6,8 @@ export interface PassportCustomer {
   phone: string;
   email?: string;
   notes?: string;
+  totalOrders: number;
+  totalSpent: number;
   createdAt: string;
   updatedAt?: string;
 }
@@ -13,29 +15,32 @@ export interface PassportCustomer {
 export interface PassportOrderItem {
   templateId: string;
   templateName: string;
-  country: string;
-  dimensions: string;
+  country?: string;
+  dimensions?: string;
   quantity: number;
-  pricePerPhoto: number;
-  totalPrice: number;
+  pricePerUnit: number;
+  total: number;
+  photoUrl?: string;
 }
 
 export interface PassportOrder {
   id: string;
-  orderId: string;
+  orderId?: string;
   customerId: string;
   customerName: string;
-  customerPhone: string;
+  customerPhone?: string;
   items: PassportOrderItem[];
   subtotal: number;
-  discount: number;
+  discount?: number;
   tax: number;
-  totalAmount: number;
-  paidAmount: number;
-  balanceDue: number;
+  total: number;
+  paidAmount?: number;
+  balanceDue?: number;
   status: 'pending' | 'printed' | 'delivered' | 'cancelled';
   paymentStatus: 'unpaid' | 'partial' | 'paid';
   paymentMethod?: 'cash' | 'upi' | 'card' | 'other';
+  paymentReference?: string;
+  paidAt?: string;
   notes?: string;
   createdAt: string;
   updatedAt?: string;
@@ -47,8 +52,9 @@ export interface PassportPhotoPrice {
   templateId: string;
   templateName: string;
   country: string;
-  pricePerPhoto: number;
-  pricePerSheet: number; // 4x6 paper with multiple photos
+  photoType: string;
+  price: number;
+  pricePerSheet?: number;
   isActive: boolean;
 }
 
